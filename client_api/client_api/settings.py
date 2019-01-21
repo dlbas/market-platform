@@ -38,7 +38,10 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'rest_framework'
+    'rest_framework',
+    'rest_framework_jwt',
+    'django_filters',
+    'client_user'
 ]
 
 
@@ -47,15 +50,16 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated',
     ),
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'client_user.backends.JWTWithNoTotpAuthentication',
-        # 'rest_framework_jwt.authentication.JSONWebTokenAuthentication'
+        'rest_framework_jwt.authentication.JSONWebTokenAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+        'rest_framework.authentication.BasicAuthentication',
     ),
     'DEFAULT_PARSER_CLASSES': (
         'rest_framework.parsers.JSONParser',
     ),
     # 'DEFAULT_PAGINATION_CLASS': 'back_api.paginator.FastCountPagination',
     # 'PAGE_SIZE': 10,
-    'EXCEPTION_HANDLER': 'client_user.backends.exception_handler_sentry',
+    # 'EXCEPTION_HANDLER': 'client_user.backends.exception_handler_sentry',
     'COERCE_DECIMAL_TO_STRING': False
 }
 
@@ -67,8 +71,11 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-] 
+]
+
 ROOT_URLCONF = 'client_api.urls'
+
+AUTH_USER_MODEL = 'client_user.ClientUser'
 
 TEMPLATES = [
     {

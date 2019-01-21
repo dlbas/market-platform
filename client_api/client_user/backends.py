@@ -9,6 +9,8 @@ logger = logging.getLogger('django.views')
 
 class JWTWithNoTotpAuthentication(JSONWebTokenAuthentication):
     def authenticate_credentials(self, payload):
+        import pdb;pdb.set_trace()
+        logger.error(payload)
         user = super().authenticate_credentials(payload)
 
         orig_iat = int(payload['orig_iat'])

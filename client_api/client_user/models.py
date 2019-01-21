@@ -1,10 +1,11 @@
 from decimal import Decimal
-from enumerate import Enum
+from enum import Enum
 import uuid
+import pyotp
 
 from django.db import models, transaction
 from django.utils import timezone
-from django.conf import setting
+from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
 from django.shortcuts import get_object_or_404
 
@@ -247,8 +248,8 @@ class OrderStatus(Enum):
 class Order(models.Model):
     type = models.CharField(max_length=15, choices=[(tag, tag.value) for tag in OrderType])
     status = models.CharField(max_length=30, choices=[(tag, tag.value) for tag in OrderStatus])
-    instrument_from = models.ForeignKey(Instrument, on_delete=models.CASCADE)
-    instrument_to = models.ForeignKey(Instrument, on_delete=models.CASCADE)
+    instrument_from = models.ForeignKey(Instrument, on_delete=models.CASCADE, related_name='instrument_from')
+    instrument_to = models.ForeignKey(Instrument, on_delete=models.CASCADE, related_name='instrument_to')
     total_sum = models.DecimalField(max_digits=20, decimal_places=8, default=0)
     remaining_sum = models.DecimalField(max_digits=20, decimal_places=8, default=0)
     created_at_dt = models.DateTimeField(auto_now_add=True)
