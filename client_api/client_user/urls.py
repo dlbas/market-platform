@@ -12,6 +12,7 @@ urlpatterns = [
     path('', include(router.urls)),
     path('api-token-auth/', ObtainJSONWebToken.as_view(), name='login'),
     path('create-user/', views.ClientUserAPIView.as_view()),
+    path('verify-email/', views.EmailVerificationAPIView.as_view(), name='verify-email'),
     # path('change-password/', views.ChangePasswordAPIView.as_view()),
     # path('restore-password/', views.RestorePasswordAPIView.as_view()),
     # path('request-restore-password/', views.RequestRestorePasswordAPIView.as_view()),

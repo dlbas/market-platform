@@ -9,6 +9,8 @@ from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
 from django.shortcuts import get_object_or_404
 
+from client_api import exceptions
+
 
 def generate_referral_code(length):
     d = uuid.uuid4()
@@ -99,12 +101,12 @@ class ClientUser(AbstractBaseUser):
     def activate(cls, code):
         user = get_object_or_404(cls, email_verification_code=code)
 
-        if not user.is_email_verified and user.email_verification_code == code:
+        if not user.is_email_verified and str(user.email_verification_code) == code:
             user.is_email_verified = True
-            user.email_verification_date = timezone.now()
+            user.email_verified_at_dt = timezone.now()
             user.save(update_fields=[
                 'is_email_verified',
-                'email_verification_date',
+                'email_verified_at_dt',
             ])
         else:
             raise exceptions.ActivationError

@@ -41,7 +41,9 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_jwt',
     'django_filters',
-    'client_user'
+    'client_user',
+    'django_celery_beat',
+    'django_celery_results'
 ]
 
 
@@ -159,9 +161,18 @@ CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
 
+# email
+EMAIL_HOST = 'smtp.yandex.ru'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'funky.lory@yandex.ru'
+EMAIL_HOST_PASSWORD = 'daniel'
+
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.1/howto/static-files/
 
 STATIC_URL = '/static/'
+
+API_URL = 'http://localhost:8000'
 print("Admin settings were loaded. Chosen database: {}. Port: {}".format(DATABASES.get('default').get('NAME'), DATABASES.get('default').get('PORT')))

@@ -7,7 +7,8 @@ from client_api.backends import JWTWithTotpAuthentication
 from rest_framework_jwt.views import ObtainJSONWebToken
 from rest_framework_jwt.serializers import JSONWebTokenSerializer
 
-from client_user import serializers
+from client_user import serializers, models
+from client_api.celery import send_django_emails_task
 
 import logging
 
@@ -27,6 +28,24 @@ class ClientUserAPIView(generics.GenericAPIView):
         serializer.is_valid(raise_exception=True)
         serializer.save(request)
         return Response(status=status.HTTP_201_CREATED)
+
+
+class EmailVerificationAPIView(generics.GenericAPIView):
+    permission_classes = [permissions.AllowAny]
+    serializer_class = serializers.EmailVerificationSerializer
+
+    def post(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.activate_user()
+        return Response(status=status.HTTP_200_OK)
+
+    def get(self, request):
+        code = request.query_params.get('code')
+        if code:
+            models.ClientUser.activate(code)
+            return Response(status=status.HTTP_200_OK)
+        return Response(status=status.HTTP_403_FORBIDDEN)
 
 
 # class ChangePasswordAPIView(generics.GenericAPIView):

@@ -6,7 +6,7 @@ from client_user import models
 from django.core.exceptions import ValidationError
 from rest_framework_jwt.serializers import JSONWebTokenSerializer
 
-from client_api import exceptions
+from client_api import exceptions, celery as celery_tasks
 
 class ClientUserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -20,9 +20,20 @@ class ClientUserSerializer(serializers.ModelSerializer):
 
     def save(self, request, *args, **kwargs):
         user = models.ClientUser.objects.create_user(**self.validated_data)
+        link = settings.API_URL + '/api/user/verify-email/?code=' + str(user.email_verification_code)
+        
+        celery_tasks.send_django_emails_task.delay(
+            emails=[user.email],
+            subject='Подтверди регистрацию, епта',
+            body=f'Тыкай: {link}'
+        )
 
-        # TODO send mail
 
+class EmailVerificationSerializer(serializers.Serializer):
+    code = serializers.UUIDField()
+
+    def activate_user(self):
+        models.ClientUser.activate(code=self.validated_data['code'])
 
 
 class ChangePasswordSerializer(serializers.Serializer):
@@ -52,14 +63,12 @@ class JWTWithTotpSerializer(JSONWebTokenSerializer):
     def get_user_agent(self, request):
         return request.META.get('HTTP_USER_AGENT', '')
 
-    # def send_mail(self, user, ip, subject, template):
-    #     email_template = EmailTemplate.objects.get(template_type=template)
-
-    #     send_email_task.delay(
-    #         emails=[user.email],
-    #         subject=subject,
-    #         html=email_template.get_html(user.language).replace('#marker_ip', ip),
-    #     )
+    def send_mail(self, user, ip, subject, template):
+        celery_tasks.send_django_emails_task.delay(
+            emails=[user.email],
+            subject=subject,
+            body=f'Authorized on ip: {ip}',
+        )
 
     def validate(self, attrs):
         try:
@@ -74,13 +83,13 @@ class JWTWithTotpSerializer(JSONWebTokenSerializer):
         if not user.is_email_verified:
             # TODO: Send email if email is not verified
             # email_template = EmailTemplate.objects.get(template_type=EmailTemplateTypes.registration.value)
-            # link = settings.URL_CUSTOMER_UI + '/auth/confirm?code=' + str(user.email_verification_code)
+            link = settings.URL_CUSTOMER_UI + '/auth/confirm?code=' + str(user.email_verification_code)
 
-            # send_email_task.delay(
-            #     emails=[user.email],
-            #     subject='Registration confirmation.',
-            #     html=email_template.get_html(user.language).replace("#marker_link", link),
-            # )
+            celery_tasks.send_django_emails_task.delay(
+                emails=[user.email],
+                subject='Registration confirmation.',
+                body=f'Auth link: {link}',
+            )
             raise exceptions.EmailNotConfirmed
 
 
@@ -103,56 +112,56 @@ class JWTWithTotpSerializer(JSONWebTokenSerializer):
         # )
         return data
 
-class RequestRestorePasswordSerializer(serializers.Serializer):
-    email = serializers.CharField(required=True)
+# class RequestRestorePasswordSerializer(serializers.Serializer):
+#     email = serializers.CharField(required=True)
 
-    def save(self, request, **kwargs):
-        email = self.validated_data['email']
-        ip = user_logs.get_user_ip(request)
-        user_agent = user_logs.get_user_agent(request)
-        token = models.RestorePasswordToken._create(email,
-                                                    user_logs.get_user_ip(request),
-                                                    user_logs.get_cf_country(request),
-                                                    user_logs.get_user_agent(request))
+#     def save(self, request, **kwargs):
+#         email = self.validated_data['email']
+#         ip = user_logs.get_user_ip(request)
+#         user_agent = user_logs.get_user_agent(request)
+#         token = models.RestorePasswordToken._create(email,
+#                                                     user_logs.get_user_ip(request),
+#                                                     user_logs.get_cf_country(request),
+#                                                     user_logs.get_user_agent(request))
 
-        user = models.ClientUser.objects.get(email=email)
+#         user = models.ClientUser.objects.get(email=email)
 
-        # send email
-        email_template = EmailTemplate.objects.get(template_type=EmailTemplateTypes.restore_password.value)
-        link = settings.URL_CUSTOMER_UI + '/restore-password?code=' + str(token.key)
+#         # send email
+#         email_template = EmailTemplate.objects.get(template_type=EmailTemplateTypes.restore_password.value)
+#         link = settings.URL_CUSTOMER_UI + '/restore-password?code=' + str(token.key)
 
-        send_email_task.delay(emails=[email],
-                              subject='Restore password.',
-                              html=email_template.get_html(user.language).replace("#marker_link", link).replace("#marker_ip", ip).replace("#marker_user_agent",user_agent))
-
-
-class CheckRestorePasswordSerializer(serializers.Serializer):
-    code = serializers.UUIDField()
-
-    def check(self, request, **kwargs):
-        code = self.validated_data['code']
-        models.RestorePasswordToken.check_is_valid(code)
+#         send_email_task.delay(emails=[email],
+#                               subject='Restore password.',
+#                               html=email_template.get_html(user.language).replace("#marker_link", link).replace("#marker_ip", ip).replace("#marker_user_agent",user_agent))
 
 
+# class CheckRestorePasswordSerializer(serializers.Serializer):
+#     code = serializers.UUIDField()
 
-class RestorePasswordSerializer(serializers.Serializer):
-    code = serializers.UUIDField()
-    new_password = serializers.CharField(required=True)
+#     def check(self, request, **kwargs):
+#         code = self.validated_data['code']
+#         models.RestorePasswordToken.check_is_valid(code)
 
-    def validate_new_password(self, value):
-        try:
-            validate_password(value)
-            return value
-        except ValidationError as e:
-            raise exceptions.ChangePasswordInvalidPassword(e)
 
-    def restore_password(self, request, **kwargs):
-        code = self.validated_data['code']
-        new_password = self.validated_data['new_password']
 
-        user = models.RestorePasswordToken.update_password(code, new_password,
-                                                    user_logs.get_user_ip(request),
-                                                    user_logs.get_cf_country(request),
-                                                    user_logs.get_user_agent(request))
-        return user
+# class RestorePasswordSerializer(serializers.Serializer):
+#     code = serializers.UUIDField()
+#     new_password = serializers.CharField(required=True)
+
+#     def validate_new_password(self, value):
+#         try:
+#             validate_password(value)
+#             return value
+#         except ValidationError as e:
+#             raise exceptions.ChangePasswordInvalidPassword(e)
+
+#     def restore_password(self, request, **kwargs):
+#         code = self.validated_data['code']
+#         new_password = self.validated_data['new_password']
+
+#         user = models.RestorePasswordToken.update_password(code, new_password,
+#                                                     user_logs.get_user_ip(request),
+#                                                     user_logs.get_cf_country(request),
+#                                                     user_logs.get_user_agent(request))
+#         return user
 
