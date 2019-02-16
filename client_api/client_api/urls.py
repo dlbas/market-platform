@@ -19,6 +19,6 @@ from django.urls import path
 from client_user import urls as user_urls
 
 urlpatterns = [
-    url(r'^api/user/', include(user_urls)),
+    url(r'^api/v1/user/', include(user_urls)),
     url('admin/', admin.site.urls)
 ]

@@ -11,10 +11,12 @@ https://docs.djangoproject.com/en/2.1/ref/settings/
 """
 
 import os
+import sys
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
+sys.path.append('../client_api/')
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
+os.path.join(BASE_DIR, '../client_api/')
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/2.1/howto/deployment/checklist/
@@ -27,9 +29,7 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
-
 # Application definition
-
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -37,6 +37,14 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'rest_framework',
+    'rest_framework_jwt',
+    'django_filters',
+    'django_celery_beat',
+    'django_celery_results',
+
+    'admin_user',
+    'client_user',
 ]
 
 MIDDLEWARE = [
@@ -49,7 +57,27 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+REST_FRAMEWORK = {
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    ),
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_jwt.authentication.JSONWebTokenAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+        'rest_framework.authentication.BasicAuthentication',
+    ),
+    'DEFAULT_PARSER_CLASSES': (
+        'rest_framework.parsers.JSONParser',
+    ),
+    # 'DEFAULT_PAGINATION_CLASS': 'back_api.paginator.FastCountPagination',
+    # 'PAGE_SIZE': 10,
+    # 'EXCEPTION_HANDLER': 'client_user.backends.exception_handler_sentry',
+    'COERCE_DECIMAL_TO_STRING': False
+}
+
 ROOT_URLCONF = 'admin_api.urls'
+
+AUTH_USER_MODEL = 'admin_user.AdminUser'
 
 TEMPLATES = [
     {
@@ -69,17 +97,18 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'admin_api.wsgi.application'
 
-
 # Database
 # https://docs.djangoproject.com/en/2.1/ref/settings/#databases
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'market_platform_backend',
+        'USER': 'postgres',
+        'HOST': 'localhost',
+        'PORT': '5432'
     }
 }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/2.1/ref/settings/#auth-password-validators
@@ -99,7 +128,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
 # Internationalization
 # https://docs.djangoproject.com/en/2.1/topics/i18n/
 
@@ -113,8 +141,30 @@ USE_L10N = True
 
 USE_TZ = True
 
+# Static files (CSS, JavaScript, Images)
+# https://docs.djangoproject.com/en/2.1/howto/static-files/
+REDIS_HOST = 'localhost'
+REDIS_PORT = 6379
+REDIS_DB = 0
+
+# celery
+CELERY_BROKER_URL = 'redis://localhost:6379'
+CELERY_RESULT_BACKEND = 'redis://localhost:6379'
+CELERY_ACCEPT_CONTENT = ['application/json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = TIME_ZONE
+
+# email
+EMAIL_HOST = 'smtp.yandex.ru'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'funky.lory@yandex.ru'
+EMAIL_HOST_PASSWORD = 'daniel'
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.1/howto/static-files/
 
 STATIC_URL = '/static/'
+
+API_URL = 'http://localhost:8000'

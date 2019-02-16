@@ -8,11 +8,12 @@ from rest_framework_jwt.serializers import JSONWebTokenSerializer
 
 from client_api import exceptions, celery as celery_tasks
 
+
 class ClientUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.ClientUser
         fields = ('email', 'first_name', 'last_name', 'created_at_dt', 'language', 'id', 'password', 'balance',
-                  'country', 'referral_code', )
+                  'country', 'referral_code',)
 
     def validate_password(self, password):
         validate_password(password)
@@ -21,7 +22,7 @@ class ClientUserSerializer(serializers.ModelSerializer):
     def save(self, request, *args, **kwargs):
         user = models.ClientUser.objects.create_user(**self.validated_data)
         link = settings.API_URL + '/api/user/verify-email/?code=' + str(user.email_verification_code)
-        
+
         celery_tasks.send_django_emails_task.delay(
             emails=[user.email],
             subject='Подтверди регистрацию, епта',
@@ -47,6 +48,7 @@ class ChangePasswordSerializer(serializers.Serializer):
         except ValidationError as e:
             raise exceptions.InvalidPassword(e)
 
+
 class JWTWithTotpSerializer(JSONWebTokenSerializer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -55,7 +57,8 @@ class JWTWithTotpSerializer(JSONWebTokenSerializer):
 
     def get_ip_addr(self, request):
         x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-        if x_forwarded_for: ip_addr = x_forwarded_for.split(',')[0]
+        if x_forwarded_for:
+            ip_addr = x_forwarded_for.split(',')[0]
         else:
             ip_addr = request.META.get('REMOTE_ADDR')
         return ip_addr
@@ -92,9 +95,8 @@ class JWTWithTotpSerializer(JSONWebTokenSerializer):
             )
             raise exceptions.EmailNotConfirmed
 
-
         user_ip_info, is_created = models.ClientUserIp.objects.update_or_create(user=user,
-                                                                         ip_address=self.get_ip_addr(request))
+                                                                                ip_address=self.get_ip_addr(request))
         user_ip_info.user_agent = self.get_user_agent(request)
         user_ip_info.save()
 
@@ -111,6 +113,7 @@ class JWTWithTotpSerializer(JSONWebTokenSerializer):
         #     user=user,
         # )
         return data
+
 
 # class RequestRestorePasswordSerializer(serializers.Serializer):
 #     email = serializers.CharField(required=True)
@@ -143,7 +146,6 @@ class JWTWithTotpSerializer(JSONWebTokenSerializer):
 #         models.RestorePasswordToken.check_is_valid(code)
 
 
-
 # class RestorePasswordSerializer(serializers.Serializer):
 #     code = serializers.UUIDField()
 #     new_password = serializers.CharField(required=True)
@@ -165,3 +167,37 @@ class JWTWithTotpSerializer(JSONWebTokenSerializer):
 #                                                     user_logs.get_user_agent(request))
 #         return user
 
+
+class InstrumentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.Instrument
+        fields = '__all__'
+
+    def create(self, validated_data):
+        return models.Instrument.objects.create(**validated_data)
+
+    def update(self, instance, validated_data):
+        instance.name = validated_data.get('name', instance.name)
+        instance.status = validated_data.get('status', instance.status)
+        return instance
+
+
+class OrderSerializer(serializers.ModelSerializer):
+    remaining_sum = serializers.FloatField(required=False)
+    type = serializers.ChoiceField(choices=[tag.value for tag in models.OrderType], required=False)
+
+    class Meta:
+        model = models.Order
+        fields = '__all__'
+
+    def create(self, validated_data):
+        return models.Order.objects.create(**validated_data)
+
+    def update(self, instance, validated_data):
+        instance.type = validated_data.get('type', instance.type)
+        instance.status = validated_data.get('status', instance.status)
+        instance.instrument_from = validated_data.get('instrument_from', instance.instrument_from)
+        instance.instrument_to = validated_data.get('instrument_to', instance.instrument_to)
+        instance.total_sum = validated_data.get('total_sum', instance.total_sum)
+        instance.remaining_sum = validated_data.get('remaining_sum', instance.remaining_sum)
+        instance.expires_in = validated_data.get('expires_in', instance.expires_in)

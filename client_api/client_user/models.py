@@ -1,4 +1,3 @@
-from decimal import Decimal
 from enum import Enum
 import uuid
 import pyotp
@@ -8,6 +7,7 @@ from django.utils import timezone
 from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
 from django.shortcuts import get_object_or_404
+from django.core.exceptions import ObjectDoesNotExist
 
 from client_api import exceptions
 
@@ -17,19 +17,13 @@ def generate_referral_code(length):
     str = d.hex
     return str[:int(length)]
 
+
 class Currency(models.Model):
     title = models.CharField(max_length=30, unique=True)
     is_active = models.BooleanField(default=True)
 
     def __str__(self):
         return f'{self.title}'
-
-
-class Wallet(models.Model):
-    address = models.CharField(max_length=150, unique=True)
-    currency = models.ForeignKey(Currency, on_delete=models.CASCADE)
-    assigned_at_dt = models.DateTimeField(blank=True, null=True)
-    is_owned = models.BooleanField(default=False)
 
 
 class UserManager(BaseUserManager):
@@ -39,17 +33,9 @@ class UserManager(BaseUserManager):
         with transaction.atomic():
             user = self.model(email=self.normalize_email(email), **extra_fields)
             user.set_password(password)
-            user.assign_wallet()
-            user.referral_code = generate_referral_code(10)
-
-            # kyc = KYC.objects.create()
-            # user.kyc = kyc
-
             user.save()
-
-            ref_code = extra_fields.get('referral_code', False)
-            if ref_code:
-                user.set_referrer(ref_code)
+            # TODO HARDCODE USD
+            user.assign_fiat_balance('USD')
 
             return user
 
@@ -66,13 +52,15 @@ class ClientUserStatus(Enum):
     VERIFIED = 'verified'
     UNVERIFIED = 'unverified'
 
+
 class ClientUser(AbstractBaseUser):
     created_at_dt = models.DateTimeField(auto_now_add=True)
     updated_at_dt = models.DateTimeField(auto_now=True)
     email = models.EmailField(max_length=40, unique=True)
     first_name = models.CharField(max_length=30, blank=True)
     last_name = models.CharField(max_length=30, blank=True)
-    status = models.CharField(max_length=128, choices=[(tag.name, tag.value) for tag in ClientUserStatus], default=ClientUserStatus.UNVERIFIED.value)
+    status = models.CharField(max_length=128, choices=[(tag.name, tag.value) for tag in ClientUserStatus],
+                              default=ClientUserStatus.UNVERIFIED.value)
     is_active = models.BooleanField(default=True)
     password_changed_at_dt = models.DateTimeField(default=timezone.now)
     totp_token = models.CharField(max_length=30, blank=True)
@@ -80,7 +68,6 @@ class ClientUser(AbstractBaseUser):
     email_verified_at_dt = models.DateTimeField(null=True, blank=True)
     email_verification_code = models.UUIDField(default=uuid.uuid4)
     is_only_view_allowed = models.BooleanField(default=False)
-    # kyc = models.ForeignKey('client_user.KYC', on_delete=models.PROTECT, null=True, blank=True)
     comment = models.CharField(max_length=500, default='', blank=True)
     language = models.CharField(max_length=5, default='en', blank=True)
     country = models.CharField(max_length=255, blank=True)
@@ -88,10 +75,6 @@ class ClientUser(AbstractBaseUser):
     is_superuser = models.BooleanField(default=False)
     last_login = models.DateTimeField(null=True, blank=True)
     ip = models.GenericIPAddressField(null=True, blank=True)
-    referral_code = models.CharField(blank=True, max_length=10)
-    balance = models.DecimalField(null=False, blank=False, decimal_places=8, max_digits=20, default=Decimal(1.00))
-    wallet = models.ForeignKey(Wallet, blank=True, null=True, on_delete=models.DO_NOTHING)
-    referrer = models.ForeignKey("client_user.ClientUser", blank=True, null=True, on_delete=models.DO_NOTHING)
 
     objects = UserManager()
 
@@ -131,74 +114,20 @@ class ClientUser(AbstractBaseUser):
         qr_url = pyotp.totp.TOTP(self.totp_token).provisioning_uri(self.email, issuer_name=settings.TWO_FACTOR_ISSUER)
         return qr_url
 
-    # def disable_two_factor(self):
-    #     if self.is_two_factor_enabled:
-    #         self.is_two_factor_enabled = False
-    #         self.save(update_fields=['is_two_factor_enabled'])
-    #
-    # def enable_two_factor(self):
-    #     if not self.is_two_factor_enabled:
-    #         self.is_two_factor_enabled = True
-    #         self.save(update_fields=['is_two_factor_enabled'])
-
     def generate_totp_token(self):
         self.totp_token = pyotp.random_base32()
         self.save(update_fields=['totp_token'])
 
-    def assign_wallet(self):
-        with transaction.atomic():
-            try:
-                wallet = Wallet.objects.select_for_update().filter(is_owned=False).first()
-            except Exception as e:
-                return None
+    def assign_fiat_balance(self, currency_name):
+        try:
+            currency = Currency.objects.get(title=currency_name)
+        except ObjectDoesNotExist:
+            currency = Currency.objects.create(title=currency_name)
+        FiatBalance.objects.create(user=self, currency=currency)
 
-            self.wallet = wallet
-            self.save()
-            wallet.assign_date = timezone.now()
-            wallet.is_owned = True
-            wallet.save()
-
-        return wallet.address
-
-    def set_referrer(self, code):
-        referrer = ClientUser.objects.filter(referral_code=code).first()
-        if not referrer:
-            return False
-        self.referrer = referrer
-        return self.save()
-
-    def add_billing(self, operation, amount, referral=None):
-        return Billing(
-            user=self,
-            wallet=self.wallet,
-            operation=operation,
-            amount=amount,
-            referral=referral
-        ).save()
-
-    def check_amount(self, amount):
-        if self.balance < amount:
-            raise Exception("You have not enough money for this operation")
-        return True
-
-    # Комиссия за запрос
-    def take_commission(self):
-        commission = settings.BILLING['commission']
-        self.check_amount(commission)
-        self.add_billing(Operations.commission.value, commission)
-        self.balance -= Decimal(commission)
-        self.save()
-
-    # Награда за реферала
-    def add_referral(self, reward, referral):
-        self.add_billing(Operations.referral.value, reward, referral)
-        self.balance += Decimal(reward)
-        self.save()
-
-    def add_reward(self, reward):
-        self.add_billing(Operations.reward.value, reward)
-        self.balance += Decimal(reward)
-        self.save()
+    def assign_instrument_balance(self, instrument_name):
+        instrument = Instrument.objects.get(name=instrument_name)
+        InstrumentBalance.objects.create(instrument=instrument, user=self)
 
 
 class ClientUserIp(models.Model):
@@ -217,12 +146,23 @@ class Operations(Enum):
     referral = "referral"
     commission = "commission"
 
-class Billing(models.Model):
-    operation = models.CharField(max_length=30, choices=[(tag, tag.value) for tag in Operations])
-    wallet = models.ForeignKey(Wallet, on_delete=models.CASCADE)
-    operation = models.CharField(max_length=30, choices=[(tag, tag.value) for tag in Operations])
-    amount = models.DecimalField(decimal_places=8, max_digits=20, default=Decimal(0.00))
-    created_at_dt = models.DateTimeField(auto_now_add=True)
+
+class InstrumentBalance(models.Model):
+    user = models.ForeignKey(ClientUser, on_delete=models.PROTECT)
+    instrument = models.ForeignKey('Instrument', on_delete=models.PROTECT)
+    amount = models.DecimalField(max_digits=20, decimal_places=8, default=0)
+
+    def __str__(self):
+        return f'{self.amount} {self.instrument}'
+
+
+class FiatBalance(models.Model):
+    user = models.ForeignKey(ClientUser, on_delete=models.PROTECT)
+    currency = models.ForeignKey(Currency, on_delete=models.PROTECT)
+    amount = models.DecimalField(max_digits=20, decimal_places=8, default=0)
+
+    def __str__(self):
+        return f'{self.amount} {self.currency}'
 
 
 class InstrumentStatus(Enum):
@@ -233,27 +173,122 @@ class InstrumentStatus(Enum):
 
 class Instrument(models.Model):
     name = models.CharField(max_length=50)
-    status = models.CharField(max_length=30, choices=[(tag, tag.value) for tag in InstrumentStatus])
+    status = models.CharField(max_length=30, choices=[(tag, tag.value) for tag in InstrumentStatus],
+                              default=InstrumentStatus.ACTIVE)
+    # these ones for underlying credit
+    credit_created_at_d = models.DateField(null=True)
+    credit_expires_at_d = models.DateField(null=True)
+    # expected values like 15.575 %
+    credit_interest_percentage = models.DecimalField(max_digits=5, decimal_places=3, null=True)
     created_at_dt = models.DateTimeField(auto_now_add=True)
     updated_at_dt = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
 
 
 class OrderType(Enum):
     SELL = 'sell'
     BUY = 'buy'
 
+
 class OrderStatus(Enum):
     ACTIVE = 'active'
     COMPLETED = 'completed'
     DELETED = 'deleted'
 
+
 class Order(models.Model):
     type = models.CharField(max_length=15, choices=[(tag, tag.value) for tag in OrderType])
-    status = models.CharField(max_length=30, choices=[(tag, tag.value) for tag in OrderStatus])
-    instrument_from = models.ForeignKey(Instrument, on_delete=models.CASCADE, related_name='instrument_from')
-    instrument_to = models.ForeignKey(Instrument, on_delete=models.CASCADE, related_name='instrument_to')
+    status = models.CharField(max_length=30, choices=[(tag, tag.value) for tag in OrderStatus],
+                              default=OrderStatus.ACTIVE)
+    price = models.DecimalField(max_digits=20, decimal_places=8)
+    instrument = models.ForeignKey(Instrument, on_delete=models.PROTECT, related_name='instrument')
     total_sum = models.DecimalField(max_digits=20, decimal_places=8, default=0)
     remaining_sum = models.DecimalField(max_digits=20, decimal_places=8, default=0)
     created_at_dt = models.DateTimeField(auto_now_add=True)
     updated_at_dt = models.DateTimeField(auto_now=True)
     expires_in = models.DurationField()
+    user = models.ForeignKey(ClientUser, on_delete=models.PROTECT)
+
+    def __str__(self):
+        return f'[{self.type}|{self.instrument}] @{self.price} ({self.remaining_sum}/{self.total_sum})'
+
+    @classmethod
+    def _trade_orders(cls, first, second):
+        """
+
+        :param first:
+        :param second:
+        :return:
+        """
+        # TODO Add fee
+        with transaction.atomic():
+            trade_amount = min(first.remaining_sum, second.remaining_sum)
+            first_balance = InstrumentBalance.objects.select_for_update().get(user=first.user,
+                                                                              instrument=first.instrument)
+            second_balance = InstrumentBalance.objects.select_for_update().get(user=second.user,
+                                                                               instrument=first.instrument)
+            first_fiat_balance = FiatBalance.objects.select_for_update().get(user=first.user)
+            second_fiat_balance = FiatBalance.objects.select_for_update().get(user=second.user)
+            if not first_balance:
+                raise ValueError(f'Balance for user {first.user} in instrument not found')
+            if not second_balance:
+                raise ValueError(f'Balance for user {second.user} in instrument not found')
+            if first.type == OrderType.BUY and first_fiat_balance.amount < trade_amount * second.price:
+                raise ValueError(f'Not enough funds for {first_fiat_balance.user}')
+            if first.type == OrderType.SELL and second_fiat_balance.amount < trade_amount * second.price:
+                raise ValueError(f'Not enough funds for {second_fiat_balance.user}')
+            if first.type == OrderType.BUY and second_balance.amount < trade_amount:
+                raise ValueError(f'Not enough instrument balance for {second_balance.user}')
+            if first.type == OrderType.SELL and first_balance.amount < trade_amount:
+                raise ValueError(f'Not enough instrument balance for {first_balance.user}')
+            first.remaining_sum -= trade_amount
+            second.remaining_sum -= trade_amount
+            if first.type == OrderType.BUY:
+                first_balance.amount += trade_amount
+                second_balance.amount -= trade_amount
+                first_fiat_balance.amount -= trade_amount * second.price
+                second_fiat_balance.amount += trade_amount * second.price
+            else:
+                first_balance.amount -= trade_amount
+                second_balance.amount += trade_amount
+                first_fiat_balance.amount += trade_amount * second.price
+                second_fiat_balance.amount -= trade_amount * second.price
+            if first.remaining_sum == 0:
+                first.status = OrderStatus.COMPLETED
+            if second.remaining_sum == 0:
+                second.status = OrderStatus.COMPLETED
+            return first, second, first_balance, second_balance, first_fiat_balance, second_fiat_balance
+
+    @classmethod
+    def place_order(cls, order):
+        """
+
+        :param order:
+        :return:
+        """
+        counter_order_type = OrderType.SELL if order.type == OrderType.BUY else OrderType.BUY
+        counter_orders = None
+        with transaction.atomic():
+            if counter_order_type == OrderType.SELL:
+                counter_orders = cls.objects.select_for_update().filter(
+                    type=counter_order_type, instrument=order.instrument, price__lte=order.price
+                ).order_by('created_at_dt')
+            elif counter_order_type == OrderType.BUY:
+                counter_orders = cls.objects.select_for_update().filter(
+                    type=counter_order_type, instrument=order.instrument, price__gte=order.price
+                ).order_by('created_at_dt')
+            if not counter_orders:
+                # place order into the order book
+                order.save()
+                return order
+            for counter_order in counter_orders:
+                order, counter_order, *balances = cls._trade_orders(order, counter_order)
+                order.save()
+                counter_order.save()
+                for balance in balances:
+                    balance.save()
+                if order.status == OrderStatus.COMPLETED:
+                    return order
+        return order
