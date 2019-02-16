@@ -274,11 +274,11 @@ class Order(models.Model):
             if counter_order_type == OrderType.SELL:
                 counter_orders = cls.objects.select_for_update().filter(
                     type=counter_order_type, instrument=order.instrument, price__lte=order.price
-                ).order_by('created_at_dt')
+                ).order_by('price', 'created_at_dt')
             elif counter_order_type == OrderType.BUY:
                 counter_orders = cls.objects.select_for_update().filter(
                     type=counter_order_type, instrument=order.instrument, price__gte=order.price
-                ).order_by('created_at_dt')
+                ).order_by('-price', 'created_at_dt')
             if not counter_orders:
                 # place order into the order book
                 order.save()
