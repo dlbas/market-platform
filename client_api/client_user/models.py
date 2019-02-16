@@ -173,8 +173,8 @@ class InstrumentStatus(Enum):
 
 class Instrument(models.Model):
     name = models.CharField(max_length=50)
-    status = models.CharField(max_length=30, choices=[(tag, tag.value) for tag in InstrumentStatus],
-                              default=InstrumentStatus.ACTIVE)
+    status = models.CharField(max_length=30, choices=[(tag.name, tag.value) for tag in InstrumentStatus],
+                              default=InstrumentStatus.ACTIVE.value)
     # these ones for underlying credit
     credit_created_at_d = models.DateField(null=True)
     credit_expires_at_d = models.DateField(null=True)
@@ -199,8 +199,8 @@ class OrderStatus(Enum):
 
 
 class Order(models.Model):
-    type = models.CharField(max_length=15, choices=[(tag, tag.value) for tag in OrderType])
-    status = models.CharField(max_length=30, choices=[(tag, tag.value) for tag in OrderStatus],
+    type = models.CharField(max_length=15, choices=[(tag.name, tag.value) for tag in OrderType])
+    status = models.CharField(max_length=30, choices=[(tag.name, tag.value) for tag in OrderStatus],
                               default=OrderStatus.ACTIVE)
     price = models.DecimalField(max_digits=20, decimal_places=8)
     instrument = models.ForeignKey(Instrument, on_delete=models.PROTECT, related_name='instrument')
@@ -256,9 +256,9 @@ class Order(models.Model):
                 first_fiat_balance.amount += trade_amount * second.price
                 second_fiat_balance.amount -= trade_amount * second.price
             if first.remaining_sum == 0:
-                first.status = OrderStatus.COMPLETED
+                first.status = OrderStatus.COMPLETED.value
             if second.remaining_sum == 0:
-                second.status = OrderStatus.COMPLETED
+                second.status = OrderStatus.COMPLETED.value
             return first, second, first_balance, second_balance, first_fiat_balance, second_fiat_balance
 
     @classmethod
