@@ -26,7 +26,7 @@ SECRET_KEY = 'l^7o#s$kqf+v5-14$r7bv#ig3wd6ge0pb8yeg5wn4w!=v1o0qh'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -132,6 +132,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 JWT_AUTH = {
     'JWT_ALLOW_REFRESH': True,
+    'JWT_EXPIRATION_DELTA': datetime.timedelta(days=30),
     'JWT_REFRESH_EXPIRATION_DELTA': datetime.timedelta(days=7),
 }
 

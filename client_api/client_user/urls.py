@@ -18,6 +18,8 @@ urlpatterns = [
     # url('check-restore-password/', views.CheckRestorePasswordAPIView.as_view()),
     url(r'user-info/', views.UserInfoAPIView.as_view()),
     url(r'instruments/', views.InstrumentsApiView.as_view()),
+    url(r'fiat-balance/', views.FiatBalanceApiView.as_view()),
+    url(r'instrument-balance/', views.InstrumentBalanceApiView.as_view()),
     url(r'^', include(router.urls)),
 ]
 

@@ -12,8 +12,8 @@ from client_api import exceptions, celery as celery_tasks
 class ClientUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.ClientUser
-        fields = ('email', 'first_name', 'last_name', 'created_at_dt', 'language', 'id', 'password', 'balance',
-                  'country', 'referral_code',)
+        fields = ('email', 'first_name', 'last_name', 'created_at_dt', 'language', 'id', 'password',
+                  'country')
 
     def validate_password(self, password):
         validate_password(password)
@@ -183,17 +183,30 @@ class InstrumentSerializer(serializers.ModelSerializer):
 
 
 class OrderSerializer(serializers.ModelSerializer):
-    remaining_sum = serializers.FloatField(required=False)
     type = serializers.ChoiceField(choices=[tag.value for tag in models.OrderType])
-    expires_in = serializers.DurationField()
+    status = serializers.ChoiceField(choices=[tag.value for tag in models.OrderStatus])
+    instrument = InstrumentSerializer(read_only=True)
+    instrument_id = serializers.IntegerField(write_only=True)
+    user = serializers.ReadOnlyField(source='user.id')
 
     class Meta:
         model = models.Order
-        fields = '__all__'
+        fields = ['remaining_sum', 'type', 'status', 'expires_in', 'created_at_dt', 'updated_at_dt', 'total_sum',
+                  'instrument_id', 'instrument', 'user', 'price']
 
     def create(self, validated_data):
-        models.Order.place_order(**validated_data)
-        # return models.Order.objects.create(**validated_data)
+        user = self.context['request'].user
+        if validated_data['type'] == models.OrderType.BUY.value:
+            balance = models.FiatBalance.objects.get(user=user, instrument=validated_data['instrument_id'])
+            if balance.amount < validated_data['remaining_sum'] * validated_data['price']:
+                raise serializers.ValidationError('Not enough fiat balance')
+        elif validated_data['type'] == models.OrderType.SELL.value:
+            balance = models.InstrumentBalance.objects.get(user=user,
+                                                           instrument=validated_data['instrument_id'])
+            if balance.amount < validated_data['remaining_sum']:
+                raise serializers.ValidationError('Not enough instrument balance')
+        order = models.Order(user=user, **validated_data)
+        return models.Order.place_order(order)
 
     def update(self, instance, validated_data):
         instance.type = validated_data.get('type', instance.type)
@@ -203,3 +216,21 @@ class OrderSerializer(serializers.ModelSerializer):
         instance.total_sum = validated_data.get('total_sum', instance.total_sum)
         instance.remaining_sum = validated_data.get('remaining_sum', instance.remaining_sum)
         instance.expires_in = validated_data.get('expires_in', instance.expires_in)
+
+
+class FiatBalanceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.FiatBalance
+        fields = '__all__'
+
+    def update(self, instance, validated_data):
+        instance.amount = validated_data.get('amount', 0)
+
+
+class InstrumentBalanceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.InstrumentBalance
+        fields = '__all__'
+
+    def update(self, instance, validated_data):
+        instance.amount = validated_data.get('amount', 0)

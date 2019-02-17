@@ -2,9 +2,11 @@ from rest_framework import generics, permissions, status, views, viewsets
 from rest_framework.response import Response
 from rest_framework_jwt.views import ObtainJSONWebToken
 from rest_framework_jwt.serializers import JSONWebTokenSerializer
-from rest_framework.decorators import action
+from rest_framework.mixins import ListModelMixin, UpdateModelMixin
+import django_filters
 
 from client_user import serializers, models
+from .filters import InstrumentBalanceFilter, FiatBalanceFilter
 
 import logging
 
@@ -128,32 +130,54 @@ class UserInfoAPIView(generics.RetrieveAPIView):
 
 class InstrumentsApiView(generics.ListAPIView):
     serializer_class = serializers.InstrumentSerializer
-    permission_classes = (permissions.AllowAny,)
-    # TODO limit queryset to user
+    permission_classes = (permissions.IsAuthenticated,)
     queryset = models.Instrument.objects.all()
     lookup_field = 'id'
 
 
 class OrdersViewSet(viewsets.ModelViewSet):
     serializer_class = serializers.OrderSerializer
-    permission_classes = (permissions.AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
     lookup_field = 'id'
 
     def get_queryset(self):
-        # TODO Add user authorization in queryset
-        # return models.Order.objects.filter(user=self.request.user)
-        return models.Order.objects.all()
+        return models.Order.objects.filter(user=self.request.user)
 
     def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(request.data)
-        # serializer.is_valid(raise_exception=True)
-        if serializer.data.type == models.OrderType.BUY.value:
-            balance = models.FiatBalance.objects.get(user=request.user, instrument=serializer.data.instrument)
-            if balance < serializer.data.remaining_amount * serializer.data.price:
-                return Response('Not enough fiat balance', status=400)
-        elif serializer.data.type == models.OrderType.SELL.value:
-            balance = models.InstrumentBalance.objects.get(user=request.user, instrument=serializer.data.instrument)
-            if balance < serializer.data.remaining_amount:
-                return Response('Not enough instrument balance', status=400)
-        # models.Order.place_order(serializer.data)
+        if 'instrument' in request.data and 'instrument_id' not in request.data:
+            request.data['instrument_id'] = request.data['instrument']
         return super().create(request, *args, **kwargs)
+
+
+class FiatBalanceApiView(ListModelMixin, UpdateModelMixin, generics.GenericAPIView):
+    serializer_class = serializers.FiatBalanceSerializer
+    permission_classes = (permissions.IsAuthenticated,)
+    lookup_field = 'id'
+
+    def get_queryset(self):
+        return models.FiatBalance.objects.get(user=self.request.user)
+
+    def get(self, request, *args, **kwargs):
+        return Response(self.get_serializer(self.get_queryset()).data)
+
+    def post(self, request, *args, **kwargs):
+        self.update(request, *args, **kwargs)
+        return Response({'status': 'ok'}, status=200)
+
+
+class InstrumentBalanceApiView(ListModelMixin, UpdateModelMixin, generics.GenericAPIView):
+    serializer_class = serializers.InstrumentBalanceSerializer
+    permission_classes = (permissions.IsAuthenticated,)
+    filter_backends = (django_filters.rest_framework.DjangoFilterBackend,)
+    filter_class = InstrumentBalanceFilter
+    lookup_field = 'id'
+
+    def get_queryset(self):
+        return models.InstrumentBalance.objects.filter(user=self.request.user)
+
+    def get(self, request, *args, **kwargs):
+        return Response(self.get_serializer(self.filter_queryset(self.get_queryset()), many=True).data)
+
+    def post(self, request, *args, **kwargs):
+        self.update(request, *args, **kwargs)
+        return Response({'status': 'ok'}, status=200)
