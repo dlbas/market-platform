@@ -32,7 +32,8 @@ class BaseTestCase(TestCase):
         Fixtures.change_instrument_balance(self.user1, self.instrument, 900)
         Fixtures.change_fiat_balance(self.user2, 900)
         sell_order = models.Order(user=self.user1, instrument=self.instrument, type=models.OrderType.SELL.value,
-                                  total_sum=900, remaining_sum=900, price=1, expires_in=timedelta(days=1))
+                                  total_sum=900, remaining_sum=900, price=1,
+                                  expires_in=timedelta(days=1).total_seconds())
         buy_orders = [Fixtures.create_order(self.user2, self.instrument, models.OrderType.BUY.value, 300, 1) for _ in
                       range(3)]
         sell_order = models.Order.place_order(sell_order)
@@ -54,7 +55,8 @@ class BaseTestCase(TestCase):
         Fixtures.change_instrument_balance(self.user1, self.instrument, 900)
         Fixtures.change_fiat_balance(self.user2, 600)
         sell_order = models.Order(user=self.user1, instrument=self.instrument, type=models.OrderType.SELL.value,
-                                  total_sum=900, remaining_sum=900, price=1, expires_in=timedelta(days=1))
+                                  total_sum=900, remaining_sum=900, price=1,
+                                  expires_in=timedelta(days=1).total_seconds())
         buy_orders = [Fixtures.create_order(self.user2, self.instrument, models.OrderType.BUY.value, 300, 1) for _ in
                       range(2)]
         sell_order = models.Order.place_order(sell_order)

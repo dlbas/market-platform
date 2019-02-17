@@ -6,7 +6,6 @@ from client_user import views
 from rest_framework_jwt.views import ObtainJSONWebToken
 
 router = routers.DefaultRouter()
-router.register(r'instruments', views.InstrumentsViewSet, basename='instruments')
 router.register(r'orders', views.OrdersViewSet, basename='orders')
 
 urlpatterns = [
@@ -18,6 +17,7 @@ urlpatterns = [
     # url('request-restore-password/', views.RequestRestorePasswordAPIView.as_view()),
     # url('check-restore-password/', views.CheckRestorePasswordAPIView.as_view()),
     url(r'user-info/', views.UserInfoAPIView.as_view()),
+    url(r'instruments/', views.InstrumentsApiView.as_view()),
     url(r'^', include(router.urls)),
 ]
 

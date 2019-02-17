@@ -126,9 +126,10 @@ class UserInfoAPIView(generics.RetrieveAPIView):
         return self.request.user
 
 
-class InstrumentsViewSet(viewsets.ModelViewSet):
+class InstrumentsApiView(generics.ListAPIView):
     serializer_class = serializers.InstrumentSerializer
     permission_classes = (permissions.AllowAny,)
+    # TODO limit queryset to user
     queryset = models.Instrument.objects.all()
     lookup_field = 'id'
 
@@ -136,10 +137,23 @@ class InstrumentsViewSet(viewsets.ModelViewSet):
 class OrdersViewSet(viewsets.ModelViewSet):
     serializer_class = serializers.OrderSerializer
     permission_classes = (permissions.AllowAny,)
-    queryset = models.Order.objects.all()
     lookup_field = 'id'
 
-    @action(methods=['post'], detail=True, url_name=r'trade-directly')
-    def trade_directly(self):
-        # TODO
-        return Response(status=400)
+    def get_queryset(self):
+        # TODO Add user authorization in queryset
+        # return models.Order.objects.filter(user=self.request.user)
+        return models.Order.objects.all()
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(request.data)
+        # serializer.is_valid(raise_exception=True)
+        if serializer.data.type == models.OrderType.BUY.value:
+            balance = models.FiatBalance.objects.get(user=request.user, instrument=serializer.data.instrument)
+            if balance < serializer.data.remaining_amount * serializer.data.price:
+                return Response('Not enough fiat balance', status=400)
+        elif serializer.data.type == models.OrderType.SELL.value:
+            balance = models.InstrumentBalance.objects.get(user=request.user, instrument=serializer.data.instrument)
+            if balance < serializer.data.remaining_amount:
+                return Response('Not enough instrument balance', status=400)
+        # models.Order.place_order(serializer.data)
+        return super().create(request, *args, **kwargs)

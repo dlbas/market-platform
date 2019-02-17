@@ -184,14 +184,16 @@ class InstrumentSerializer(serializers.ModelSerializer):
 
 class OrderSerializer(serializers.ModelSerializer):
     remaining_sum = serializers.FloatField(required=False)
-    type = serializers.ChoiceField(choices=[tag.value for tag in models.OrderType], required=False)
+    type = serializers.ChoiceField(choices=[tag.value for tag in models.OrderType])
+    expires_in = serializers.DurationField()
 
     class Meta:
         model = models.Order
         fields = '__all__'
 
     def create(self, validated_data):
-        return models.Order.objects.create(**validated_data)
+        models.Order.place_order(**validated_data)
+        # return models.Order.objects.create(**validated_data)
 
     def update(self, instance, validated_data):
         instance.type = validated_data.get('type', instance.type)

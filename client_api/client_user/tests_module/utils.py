@@ -51,4 +51,4 @@ class Fixtures:
     @classmethod
     def create_order(cls, user, instrument, type, amount, price):
         return models.Order.objects.create(user=user, instrument=instrument, type=type, total_sum=amount, remaining_sum=amount,
-                                           price=price, expires_in=timedelta(days=1))
+                                           price=price, expires_in=timedelta(days=1).total_seconds())

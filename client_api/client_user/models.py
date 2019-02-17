@@ -208,7 +208,8 @@ class Order(models.Model):
     remaining_sum = models.DecimalField(max_digits=20, decimal_places=8, default=0)
     created_at_dt = models.DateTimeField(auto_now_add=True)
     updated_at_dt = models.DateTimeField(auto_now=True)
-    expires_in = models.DurationField()
+    # num of seconds in which order expires
+    expires_in = models.PositiveIntegerField()
     user = models.ForeignKey(ClientUser, on_delete=models.PROTECT)
 
     def __str__(self):
