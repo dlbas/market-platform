@@ -201,7 +201,7 @@ class OrderStatus(Enum):
 class Order(models.Model):
     type = models.CharField(max_length=15, choices=[(tag.name, tag.value) for tag in OrderType])
     status = models.CharField(max_length=30, choices=[(tag.name, tag.value) for tag in OrderStatus],
-                              default=OrderStatus.ACTIVE)
+                              default=OrderStatus.ACTIVE.value)
     price = models.DecimalField(max_digits=20, decimal_places=8)
     instrument = models.ForeignKey(Instrument, on_delete=models.PROTECT, related_name='instrument')
     total_sum = models.DecimalField(max_digits=20, decimal_places=8, default=0)
@@ -235,13 +235,13 @@ class Order(models.Model):
                 raise ValueError(f'Balance for user {first.user} in instrument not found')
             if not second_balance:
                 raise ValueError(f'Balance for user {second.user} in instrument not found')
-            if first.type == OrderType.BUY and first_fiat_balance.amount < trade_amount * second.price:
+            if first.type == OrderType.BUY.value and first_fiat_balance.amount < trade_amount * second.price:
                 raise ValueError(f'Not enough funds for {first_fiat_balance.user}')
-            if first.type == OrderType.SELL and second_fiat_balance.amount < trade_amount * second.price:
+            if first.type == OrderType.SELL.value and second_fiat_balance.amount < trade_amount * second.price:
                 raise ValueError(f'Not enough funds for {second_fiat_balance.user}')
-            if first.type == OrderType.BUY and second_balance.amount < trade_amount:
+            if first.type == OrderType.BUY.value and second_balance.amount < trade_amount:
                 raise ValueError(f'Not enough instrument balance for {second_balance.user}')
-            if first.type == OrderType.SELL and first_balance.amount < trade_amount:
+            if first.type == OrderType.SELL.value and first_balance.amount < trade_amount:
                 raise ValueError(f'Not enough instrument balance for {first_balance.user}')
             first.remaining_sum -= trade_amount
             second.remaining_sum -= trade_amount
@@ -268,14 +268,14 @@ class Order(models.Model):
         :param order:
         :return:
         """
-        counter_order_type = OrderType.SELL if order.type == OrderType.BUY else OrderType.BUY
+        counter_order_type = OrderType.SELL.value if order.type == OrderType.BUY.value else OrderType.BUY.value
         counter_orders = None
         with transaction.atomic():
-            if counter_order_type == OrderType.SELL:
+            if counter_order_type == OrderType.SELL.value:
                 counter_orders = cls.objects.select_for_update().filter(
                     type=counter_order_type, instrument=order.instrument, price__lte=order.price
                 ).order_by('price', 'created_at_dt')
-            elif counter_order_type == OrderType.BUY:
+            elif counter_order_type == OrderType.BUY.value:
                 counter_orders = cls.objects.select_for_update().filter(
                     type=counter_order_type, instrument=order.instrument, price__gte=order.price
                 ).order_by('-price', 'created_at_dt')
