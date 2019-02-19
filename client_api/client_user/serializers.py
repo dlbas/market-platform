@@ -184,10 +184,12 @@ class InstrumentSerializer(serializers.ModelSerializer):
 
 class OrderSerializer(serializers.ModelSerializer):
     type = serializers.ChoiceField(choices=[tag.value for tag in models.OrderType])
-    status = serializers.ChoiceField(choices=[tag.value for tag in models.OrderStatus])
+    status = serializers.ChoiceField(choices=[tag.value for tag in models.OrderStatus], read_only=True)
     instrument = InstrumentSerializer(read_only=True)
     instrument_id = serializers.IntegerField(write_only=True)
     user = serializers.ReadOnlyField(source='user.id')
+    remaining_sum = serializers.DecimalField(max_digits=20, decimal_places=8, read_only=True)
+    total_sum = serializers.DecimalField(max_digits=20, decimal_places=8, write_only=True)
 
     class Meta:
         model = models.Order
@@ -198,14 +200,15 @@ class OrderSerializer(serializers.ModelSerializer):
         user = self.context['request'].user
         if validated_data['type'] == models.OrderType.BUY.value:
             balance = models.FiatBalance.objects.get(user=user, instrument=validated_data['instrument_id'])
-            if balance.amount < validated_data['remaining_sum'] * validated_data['price']:
+            if balance.amount < validated_data['total_sum'] * validated_data['price']:
                 raise serializers.ValidationError('Not enough fiat balance')
         elif validated_data['type'] == models.OrderType.SELL.value:
             balance = models.InstrumentBalance.objects.get(user=user,
                                                            instrument=validated_data['instrument_id'])
-            if balance.amount < validated_data['remaining_sum']:
+            if balance.amount < validated_data['total_sum']:
                 raise serializers.ValidationError('Not enough instrument balance')
         order = models.Order(user=user, **validated_data)
+        order.remaining_sum = order.total_sum
         return models.Order.place_order(order)
 
     def update(self, instance, validated_data):
@@ -216,21 +219,34 @@ class OrderSerializer(serializers.ModelSerializer):
         instance.total_sum = validated_data.get('total_sum', instance.total_sum)
         instance.remaining_sum = validated_data.get('remaining_sum', instance.remaining_sum)
         instance.expires_in = validated_data.get('expires_in', instance.expires_in)
+        return instance
 
 
 class FiatBalanceSerializer(serializers.ModelSerializer):
+    currency = serializers.StringRelatedField(read_only=True)
+    user = serializers.ReadOnlyField(source='user.id')
+
     class Meta:
         model = models.FiatBalance
         fields = '__all__'
+        lookup_field = 'id'
 
     def update(self, instance, validated_data):
         instance.amount = validated_data.get('amount', 0)
+        instance.save()
+        return instance
 
 
 class InstrumentBalanceSerializer(serializers.ModelSerializer):
+    user = serializers.ReadOnlyField(source='user.id')
+    instrument = serializers.ReadOnlyField(source='instrument.id')
+
     class Meta:
         model = models.InstrumentBalance
         fields = '__all__'
+        lookup_field = 'id'
 
     def update(self, instance, validated_data):
         instance.amount = validated_data.get('amount', 0)
+        instance.save()
+        return instance

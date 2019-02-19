@@ -149,23 +149,22 @@ class OrdersViewSet(viewsets.ModelViewSet):
         return super().create(request, *args, **kwargs)
 
 
-class FiatBalanceApiView(ListModelMixin, UpdateModelMixin, generics.GenericAPIView):
+class FiatBalanceApiView(UpdateModelMixin, generics.GenericAPIView):
     serializer_class = serializers.FiatBalanceSerializer
     permission_classes = (permissions.IsAuthenticated,)
     lookup_field = 'id'
 
-    def get_queryset(self):
+    def get_object(self):
         return models.FiatBalance.objects.get(user=self.request.user)
 
     def get(self, request, *args, **kwargs):
-        return Response(self.get_serializer(self.get_queryset()).data)
+        return Response(self.get_serializer(self.get_object()).data)
 
-    def post(self, request, *args, **kwargs):
-        self.update(request, *args, **kwargs)
-        return Response({'status': 'ok'}, status=200)
+    def put(self, request, *args, **kwargs):
+        return self.update(request, *args, **kwargs)
 
 
-class InstrumentBalanceApiView(ListModelMixin, UpdateModelMixin, generics.GenericAPIView):
+class InstrumentBalanceApiView(UpdateModelMixin, generics.GenericAPIView):
     serializer_class = serializers.InstrumentBalanceSerializer
     permission_classes = (permissions.IsAuthenticated,)
     filter_backends = (django_filters.rest_framework.DjangoFilterBackend,)
@@ -178,6 +177,5 @@ class InstrumentBalanceApiView(ListModelMixin, UpdateModelMixin, generics.Generi
     def get(self, request, *args, **kwargs):
         return Response(self.get_serializer(self.filter_queryset(self.get_queryset()), many=True).data)
 
-    def post(self, request, *args, **kwargs):
-        self.update(request, *args, **kwargs)
-        return Response({'status': 'ok'}, status=200)
+    def put(self, request, *args, **kwargs):
+        return self.update(request, *args, **kwargs)
