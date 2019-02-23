@@ -97,6 +97,8 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'client_api.wsgi.application'
 
+STATIC_ROOT = '/www/client-api/'
+
 
 # Database
 # https://docs.djangoproject.com/en/2.1/ref/settings/#databases
