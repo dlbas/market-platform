@@ -11,8 +11,8 @@ services:
 - redis-server
 
 before_script:
-- pipenv run python manage.py migrate
-- pipenv run python manage.py test
+- pipenv run python client_api/manage.py migrate
+- pipenv run python client_api/manage.py test
 
 deploy:
   provider: script
