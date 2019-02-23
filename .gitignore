@@ -111,3 +111,6 @@ Pipfile.lock
 
 # pycharm
 .idea/
+
+# local settings
+settings_local.py
