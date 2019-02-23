@@ -1,11 +1,28 @@
 language: python
-
 python:
-    - '3.6'
-
+- '3.6'
+env:
+    - SERVER=206.189.28.152
+services:
+- postgresql
+- redis-server
 install:
-    - systemctl restart client_api.service
-
+    - 
 before_script:
-    - pipenv run python manage.py migrate
-    - pipenv run python manage.py test
+- pipenv run python manage.py migrate
+- pipenv run python manage.py test
+deploy:
+  provider: script
+  skip_cleanup: true
+  script: rsync -r --delete-after --quiet $TRAVIS_BUILD_DIR/market-platform root@206.189.28.152:/root/market-platform
+  on:
+    branch: master
+before_install:
+- openssl aes-256-cbc -K $encrypted_480b6785672e_key -iv $encrypted_480b6785672e_iv
+  -in deploy-key.enc -out ./deploy-key -d
+- ssh-add ./deploy_key
+- eval "$(ssh-agent -s)"
+- chmod 600 ./deploy_key
+- echo -e "Host $SERVER\n\tStrictHostKeyChecking no\n" >> ~/.ssh/config
+- ssh-add ./deploy_key
+- ssh -i ./deploy_key root@138.68.163.126 pwd
