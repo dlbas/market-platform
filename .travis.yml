@@ -12,14 +12,7 @@ services:
 
 before_script:
 - pipenv run python client_api/manage.py migrate
-- pipenv run python client_api/manage.py test
-
-deploy:
-  provider: script
-  skip_cleanup: true
-  script: rsync -r --delete-after --quiet $TRAVIS_BUILD_DIR/market-platform root@206.189.28.152:/root/market-platform
-  on:
-    branch: master
+# - pipenv run python client_api/manage.py test
 
 before_install:
 - psql -c 'create database market_platform_backend;' -U postgres
@@ -36,3 +29,14 @@ before_install:
 install:
     - python -m pip install pipenv
     - pipenv install
+
+deploy:
+  - provider: script
+    skip_cleanup: true
+    script: rsync -r --delete-after --quiet $TRAVIS_BUILD_DIR root@206.189.28.152:/root/market-platform
+    on:
+      branch: master
+
+  - provider: script
+    script: bash ./deploy.sh
+
