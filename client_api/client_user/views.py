@@ -148,6 +148,11 @@ class OrdersViewSet(viewsets.ModelViewSet):
             request.data['instrument_id'] = request.data['instrument']
         return super().create(request, *args, **kwargs)
 
+    def destroy_all(self, request, *args, **kwargs):
+        orders = models.Order.objects.all()
+        orders.delete()
+        return Response({'result': 'ok'}, status=200)
+
 
 class FiatBalanceApiView(UpdateModelMixin, generics.GenericAPIView):
     serializer_class = serializers.FiatBalanceSerializer

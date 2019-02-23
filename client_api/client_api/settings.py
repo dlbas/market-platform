@@ -177,5 +177,10 @@ EMAIL_HOST_PASSWORD = 'daniel'
 
 STATIC_URL = '/static/'
 
+try:
+    from .settings_local import *
+except ImportError:
+    pass
+
 API_URL = 'http://localhost:8000'
 print("Admin settings were loaded. Chosen database: {}. Port: {}".format(DATABASES.get('default').get('NAME'), DATABASES.get('default').get('PORT')))
