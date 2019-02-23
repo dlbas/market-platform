@@ -1,4 +1,5 @@
 from datetime import timedelta
+from decimal import Decimal
 from django.test import TestCase
 from .utils import Fixtures
 
@@ -27,6 +28,23 @@ class BaseTestCase(TestCase):
         self.assertEqual(second_balance.amount, 100)
         self.assertEqual(first_fiat_balance.amount, 600)
         self.assertEqual(second_fiat_balance.amount, 400)
+
+    def test_trade_two_orders_reverse_order(self):
+        Fixtures.change_fiat_balance(self.user1, 500)
+        Fixtures.change_fiat_balance(self.user2, 500)
+        order1 = Fixtures.create_order(instrument=self.instrument, user=self.user1, type=models.OrderType.BUY.value,
+                                       amount=100, price=1)
+        order2 = Fixtures.create_order(instrument=self.instrument, user=self.user2, type=models.OrderType.SELL.value,
+                                       amount=100, price=1)
+        Fixtures.change_instrument_balance(self.user2, self.instrument, 100)
+        order1, order2, first_balance, second_balance, first_fiat_balance, second_fiat_balance = models.Order._trade_orders(
+            order1, order2)
+        self.assertEqual(order1.status, models.OrderStatus.COMPLETED.value)
+        self.assertEqual(order2.status, models.OrderStatus.COMPLETED.value)
+        self.assertEqual(second_balance.amount, 0)
+        self.assertEqual(first_balance.amount, 100)
+        self.assertEqual(second_fiat_balance.amount, 600)
+        self.assertEqual(first_fiat_balance.amount, 400)
 
     def test_trade_multiple_orders_against_one(self):
         Fixtures.change_instrument_balance(self.user1, self.instrument, 900)
@@ -88,3 +106,14 @@ class BaseTestCase(TestCase):
         sell_order = Fixtures.create_order(self.user1, self.instrument, models.OrderType.SELL.value, 600, 1)
         buy_order = Fixtures.create_order(self.user2, self.instrument, models.OrderType.BUY.value, 600, 1)
         self.assertRaises(ValueError, models.Order._trade_orders, sell_order, buy_order)
+
+    def test_actual_price(self):
+        Fixtures.change_fiat_balance(self.user2, 100)
+        Fixtures.change_instrument_balance(self.user1, self.instrument, 100)
+        sell_order = Fixtures.create_order(self.user1, self.instrument, models.OrderType.SELL.value, 100,
+                                           Decimal(str(0.9)))
+        buy_order = Fixtures.create_order(self.user2, self.instrument, models.OrderType.BUY.value, 100, 1)
+        order1, order2, first_balance, second_balance, first_fiat_balance, second_fiat_balance = models.Order._trade_orders(
+            buy_order, sell_order)
+        self.assertEqual(order1.actual_price, Decimal(str(0.9)))
+        self.assertEqual(order2.actual_price, Decimal(str(0.9)))

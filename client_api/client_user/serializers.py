@@ -190,16 +190,17 @@ class OrderSerializer(serializers.ModelSerializer):
     user = serializers.ReadOnlyField(source='user.id')
     remaining_sum = serializers.DecimalField(max_digits=20, decimal_places=8, read_only=True)
     total_sum = serializers.DecimalField(max_digits=20, decimal_places=8, write_only=True)
+    actual_price = serializers.DecimalField(max_digits=20, decimal_places=8, read_only=True)
 
     class Meta:
         model = models.Order
         fields = ['remaining_sum', 'type', 'status', 'expires_in', 'created_at_dt', 'updated_at_dt', 'total_sum',
-                  'instrument_id', 'instrument', 'user', 'price']
+                  'instrument_id', 'instrument', 'user', 'price', 'actual_price']
 
     def create(self, validated_data):
         user = self.context['request'].user
         if validated_data['type'] == models.OrderType.BUY.value:
-            balance = models.FiatBalance.objects.get(user=user, instrument=validated_data['instrument_id'])
+            balance = models.FiatBalance.objects.get(user=user, currency__title='USD')  # TODO HARDCODE USD
             if balance.amount < validated_data['total_sum'] * validated_data['price']:
                 raise serializers.ValidationError('Not enough fiat balance')
         elif validated_data['type'] == models.OrderType.SELL.value:

@@ -36,6 +36,7 @@ class UserManager(BaseUserManager):
             user.save()
             # TODO HARDCODE USD
             user.assign_fiat_balance('USD')
+            user.assign_instrument_balance()
 
             return user
 
@@ -125,9 +126,9 @@ class ClientUser(AbstractBaseUser):
             currency = Currency.objects.create(title=currency_name)
         FiatBalance.objects.create(user=self, currency=currency)
 
-    def assign_instrument_balance(self, instrument_name):
-        instrument = Instrument.objects.get(name=instrument_name)
-        InstrumentBalance.objects.create(instrument=instrument, user=self)
+    def assign_instrument_balance(self):
+        for instrument in Instrument.objects.all():
+            InstrumentBalance.objects.create(instrument=instrument, user=self)
 
 
 class ClientUserIp(models.Model):
@@ -172,6 +173,7 @@ class InstrumentStatus(Enum):
 
 
 class Instrument(models.Model):
+    # TODO Create instrument balance for every user when instrument is created
     name = models.CharField(max_length=50)
     status = models.CharField(max_length=30, choices=[(tag.name, tag.value) for tag in InstrumentStatus],
                               default=InstrumentStatus.ACTIVE.value)
@@ -203,6 +205,7 @@ class Order(models.Model):
     status = models.CharField(max_length=30, choices=[(tag.name, tag.value) for tag in OrderStatus],
                               default=OrderStatus.ACTIVE.value)
     price = models.DecimalField(max_digits=20, decimal_places=8)
+    actual_price = models.DecimalField(max_digits=20, decimal_places=8, null=True)
     instrument = models.ForeignKey(Instrument, on_delete=models.PROTECT, related_name='instrument')
     total_sum = models.DecimalField(max_digits=20, decimal_places=8, default=0)
     remaining_sum = models.DecimalField(max_digits=20, decimal_places=8, default=0)
@@ -246,7 +249,7 @@ class Order(models.Model):
                 raise ValueError(f'Not enough instrument balance for {first_balance.user}')
             first.remaining_sum -= trade_amount
             second.remaining_sum -= trade_amount
-            if first.type == OrderType.BUY:
+            if first.type == OrderType.BUY.value:
                 first_balance.amount += trade_amount
                 second_balance.amount -= trade_amount
                 first_fiat_balance.amount -= trade_amount * second.price
@@ -258,8 +261,10 @@ class Order(models.Model):
                 second_fiat_balance.amount -= trade_amount * second.price
             if first.remaining_sum == 0:
                 first.status = OrderStatus.COMPLETED.value
+                first.actual_price = second.price
             if second.remaining_sum == 0:
                 second.status = OrderStatus.COMPLETED.value
+                second.actual_price = second.price
             return first, second, first_balance, second_balance, first_fiat_balance, second_fiat_balance
 
     @classmethod
