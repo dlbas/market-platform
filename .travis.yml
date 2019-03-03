@@ -24,11 +24,14 @@ before_install:
 
 install:
     - python -m pip install pipenv
-    - pipenv install
+    - pipenv sync
 
 before_script:
-- pipenv run python client_api/manage.py migrate
-- pipenv run python client_api/manage.py test $TRAVIS_BUILD_DIR/client_api
+    - pipenv run python client_api/manage.py migrate
+
+script:
+    - pipenv run python client_api/manage.py test $TRAVIS_BUILD_DIR/client_api
+    - echo "OK"
 
 # deploy:
 #   - provider: script

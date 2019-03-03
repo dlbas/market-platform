@@ -103,9 +103,6 @@ venv.bak/
 # mypy
 .mypy_cache/
 
-# pipenv
-Pipfile.lock
-
 # vim
 *~
 
