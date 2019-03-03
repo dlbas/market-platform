@@ -28,8 +28,7 @@ install:
 
 before_script:
 - pipenv run python client_api/manage.py migrate
-- pipenv run python client_api/manage.py test
-
+- pipenv run python client_api/manage.py test $TRAVIS_BUILD_DIR/client_api
 
 # deploy:
 #   - provider: script
