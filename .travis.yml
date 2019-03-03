@@ -10,10 +10,6 @@ services:
 - postgresql
 - redis-server
 
-before_script:
-- pipenv run python client_api/manage.py migrate
-# - pipenv run python client_api/manage.py test
-
 before_install:
 - psql -c 'create database market_platform_backend;' -U postgres
 - openssl aes-256-cbc -K $encrypted_480b6785672e_key -iv $encrypted_480b6785672e_iv
@@ -30,13 +26,18 @@ install:
     - python -m pip install pipenv
     - pipenv install
 
-deploy:
-  - provider: script
-    skip_cleanup: true
-    script: rsync -r --delete-after --quiet $TRAVIS_BUILD_DIR root@206.189.28.152:/root/market-platform
-    on:
-      branch: master
+before_script:
+- pipenv run python client_api/manage.py migrate
+- pipenv run python client_api/manage.py test
 
-  - provider: script
-    script: bash ./deploy.sh
+
+# deploy:
+#   - provider: script
+#     skip_cleanup: true
+#     script: rsync -r --delete-after --quiet $TRAVIS_BUILD_DIR root@206.189.28.152:/root/market-platform
+#     on:
+#       branch: master
+
+#   - provider: script
+#     script: bash ./deploy.sh
 
