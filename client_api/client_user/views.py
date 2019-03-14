@@ -128,7 +128,7 @@ class UserInfoAPIView(generics.RetrieveAPIView):
         return self.request.user
 
 
-class InstrumentsApiView(generics.ListAPIView):
+class InstrumentsViewSet(viewsets.ModelViewSet):
     serializer_class = serializers.InstrumentSerializer
     permission_classes = (permissions.IsAuthenticated,)
     queryset = models.Instrument.objects.all()

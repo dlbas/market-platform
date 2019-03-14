@@ -169,6 +169,16 @@ class JWTWithTotpSerializer(JSONWebTokenSerializer):
 
 
 class InstrumentSerializer(serializers.ModelSerializer):
+    name = serializers.CharField(max_length=50, required=True)
+    status = serializers.CharField(max_length=30, read_only=True)
+    # these ones for underlying credit
+    credit_created_at_d = serializers.DateTimeField(required=False)
+    credit_expires_at_d = serializers.DateTimeField(required=False)
+    # expected values like 15.575 %
+    credit_interest_percentage = serializers.DecimalField(required=False, max_digits=5, decimal_places=3)
+    created_at_dt = serializers.DateTimeField(read_only=True)
+    updated_at_dt = serializers.DateTimeField(read_only=True)
+
     class Meta:
         model = models.Instrument
         fields = '__all__'

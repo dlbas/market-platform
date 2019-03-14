@@ -7,6 +7,7 @@ from rest_framework_jwt.views import ObtainJSONWebToken
 
 router = routers.DefaultRouter()
 router.register(r'orders', views.OrdersViewSet, basename='orders')
+router.register(r'instruments', views.InstrumentsViewSet, basename='instruments')
 
 urlpatterns = [
     url(r'api-token-auth/', ObtainJSONWebToken.as_view(), name='login'),
@@ -17,7 +18,7 @@ urlpatterns = [
     # url('request-restore-password/', views.RequestRestorePasswordAPIView.as_view()),
     # url('check-restore-password/', views.CheckRestorePasswordAPIView.as_view()),
     url(r'user-info/', views.UserInfoAPIView.as_view()),
-    url(r'instruments/', views.InstrumentsApiView.as_view()),
+    # url(r'instruments/', views.InstrumentsApiView.as_view()),
     url(r'fiat-balance/(?P<id>\d*)', views.FiatBalanceApiView.as_view()),
     url(r'instrument-balance/(?P<id>\d*)', views.InstrumentBalanceApiView.as_view()),
     url(r'orders/delete-all/', views.OrdersViewSet.as_view({'delete': 'destroy_all'})),
