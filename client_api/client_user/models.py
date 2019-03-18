@@ -185,6 +185,18 @@ class Instrument(models.Model):
     created_at_dt = models.DateTimeField(auto_now_add=True)
     updated_at_dt = models.DateTimeField(auto_now=True)
 
+    def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
+        if not self.pk:
+            super().save(force_insert, force_update, using, update_fields)
+            self.assign_balances(self.pk)
+        else:
+            super().save(force_insert, force_update, using, update_fields)
+
+    def assign_balances(self, instrument_id):
+        for user in ClientUser.objects.all():
+            InstrumentBalance.objects.get_or_create(user=user, instrument_id=instrument_id,
+                                                    defaults={'user': user, 'instrument_id': instrument_id})
+
     def __str__(self):
         return self.name
 
