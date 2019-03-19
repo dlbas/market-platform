@@ -30,8 +30,8 @@ class Fixtures:
         """
         instrument = models.Instrument.objects.create(name=next(cls.instrument_name_generator))
         users = models.ClientUser.objects.filter()
-        for user in users:
-            models.InstrumentBalance.objects.create(instrument=instrument, user=user)
+        # for user in users:
+        #     models.InstrumentBalance.objects.create(instrument=instrument, user=user)
         return instrument
 
     @classmethod
