@@ -34,9 +34,9 @@ class Credit:
 """c.defaulted"""
 
 
-def create_credits(k = 30, tlow = 365, thigh = 365 * 5, pd = 0.2,
-                   lgd = 0.1, elow = 0.1, ehigh = 0.2, dlow = 0.1,
-                   dhigh = 0.3, value = 50):
+def create_credits(k, pd, lgd, value, tlow = 365, thigh = 365 * 5, 
+                   elow = 0.1, ehigh = 0.2, dlow = 0.1,
+                   dhigh = 0.3):
     credits=[]
     for i in range(k):
         credits.append(CREDIT(pd,lgd,np.random.normal(value,0.3 * value),np.random.uniform(low=elow,high=ehigh),np.random.uniform(low=dlow,high=dhigh),np.random.randint(low=tlow,high=thigh+1)))
@@ -114,9 +114,8 @@ def create_bags(credits_dframe, tok_in_bag):
                 del credits_dframe['index']
     return koltokbags
 
-
-if __name__ == '__main__':
-    creditiki = create_credits()
+def tokenize(PD, LGD, credit_value, number_of_credits):
+    creditiki = create_credits(number_of_credits, PD, LGD, credit_value)
     D = []
     PD = []
     LGD = []
@@ -129,3 +128,7 @@ if __name__ == '__main__':
     credits_dframe = create_dframe(D, PD, LGD, P, DI, I, R, N)
     k = 2 #количество токенов в портфеле
     koltokbags = create_bags(credits_dframe, k)#количество портфелей токенов
+    return koltokbags
+
+if __name__ == '__main__':
+    tokenize(0.2,0.1,50,30)
