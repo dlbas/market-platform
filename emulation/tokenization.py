@@ -34,14 +34,12 @@ class Credit:
 """c.defaulted"""
 
 
-def create_credits(k = 10, tlow = 365, thigh = 365 * 5, pdlow = 0.1, pdhigh = 0.2,
-                   lgdlow = 0.2, lgdhigh = 0.3, elow = 0.1, ehigh = 0.2, dlow = 0.1,
-                   dhigh = 0.3, value = 100000):
-    credits = []
+def create_credits(k = 30, tlow = 365, thigh = 365 * 5, pd = 0.2,
+                   lgd = 0.1, elow = 0.1, ehigh = 0.2, dlow = 0.1,
+                   dhigh = 0.3, value = 50):
+    credits=[]
     for i in range(k):
-        credits.append(CREDIT(np.random.uniform(low = pdlow, high = pdhigh), np.random.uniform(low = lgdlow, high = lgdhigh),
-                              np.random.normal(value, 0.3 * value), np.random.uniform(low = elow, high = ehigh),
-                              np.random.uniform(low = dlow, high = dhigh), np.random.randint(low = tlow, high = thigh + 1)))
+        credits.append(CREDIT(pd,lgd,np.random.normal(value,0.3 * value),np.random.uniform(low=elow,high=ehigh),np.random.uniform(low=dlow,high=dhigh),np.random.randint(low=tlow,high=thigh+1)))
     return credits
 
 
