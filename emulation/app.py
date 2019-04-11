@@ -22,6 +22,7 @@ def index():
     )
 
     p = Process(target=run_emulation, kwargs=dict(
+	url='http://localhost:8000/',
         assets=number_of_token_bags,
         days=data.get('days'),
         yearreturn=data.get('placementRate'),
