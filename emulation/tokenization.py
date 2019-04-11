@@ -35,11 +35,11 @@ class Credit:
 
 
 def create_credits(k, pd, lgd, value, tlow = 365, thigh = 365 * 5, 
-                   elow = 0.1, ehigh = 0.2, dlow = 0.1,
-                   dhigh = 0.3):
+                   elow = 0.1, ehigh = 0.2, dlow = 0.09,
+                   dhigh = 0.11):
     credits=[]
     for i in range(k):
-        credits.append(CREDIT(pd,lgd,np.random.normal(value,0.3 * value),np.random.uniform(low=elow,high=ehigh),np.random.uniform(low=dlow,high=dhigh),np.random.randint(low=tlow,high=thigh+1)))
+        credits.append(Credit(pd,lgd,np.random.normal(value,0.3 * value),np.random.uniform(low=elow,high=ehigh),np.random.uniform(low=dlow,high=dhigh),np.random.randint(low=tlow,high=thigh+1)))
     return credits
 
 
@@ -115,12 +115,12 @@ def create_bags(credits_dframe, tok_in_bag):
     return koltokbags
 
 def tokenize(PD, LGD, credit_value, number_of_credits):
-    creditiki = create_credits(number_of_credits, PD, LGD, credit_value)
+    creditiki = create_credits(number_of_credits, PD/100, LGD/100, credit_value)
     D = []
     PD = []
     LGD = []
     P = []
-    DI = 0.001 #доходность(устанавливается банком)
+    DI = 0.05 #доходность(устанавливается банком)
     I = 1 #цена токена(устанавливается банком)
     R = []
     N = []
@@ -131,4 +131,4 @@ def tokenize(PD, LGD, credit_value, number_of_credits):
     return koltokbags
 
 if __name__ == '__main__':
-    tokenize(0.2,0.1,50,30)
+    tokenize(20,10,50,30)
