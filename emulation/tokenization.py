@@ -45,8 +45,8 @@ def create_credits(k, pd, lgd, value, tlow = 365, thigh = 365 * 5,
 
 # В этом блоке мы извлекаем данные о кредитах из документа Кредиты и с помощью формулы,вычисленной в документе,рассчитываем размер токена для
 # каждого кредита и вычисляем количество токенов,на которые делим каждый кредит
-def token_division(creditiki, D, PD, LGD, P, DI, I, R, N):
-    for i in range(10):
+def token_division(k, creditiki, D, PD, LGD, P, DI, I, R, N):
+    for i in range(k):
         D.append(creditiki[i].D)
         PD.append(creditiki[i].PD)
         LGD.append(creditiki[i].LGD)
@@ -124,7 +124,7 @@ def tokenize(PD, LGD, credit_value, number_of_credits):
     I = 1 #цена токена(устанавливается банком)
     R = []
     N = []
-    token_division(creditiki,D, PD, LGD, P, DI, I, R, N)
+    token_division(number_of_credits,creditiki,D, PD, LGD, P, DI, I, R, N)
     credits_dframe = create_dframe(D, PD, LGD, P, DI, I, R, N)
     k = 2 #количество токенов в портфеле
     koltokbags = create_bags(credits_dframe, k)#количество портфелей токенов
