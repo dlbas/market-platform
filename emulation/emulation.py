@@ -3,6 +3,28 @@ import requests
 import json
 import math
 from datetime import datetime
+import logging
+
+FORMAT = '%(asctime)-15s %(message)s'
+logging.basicConfig(format=FORMAT)
+
+
+class Logger:
+    def __init__(self, name, filename):
+        self.logger = logging.getLogger(name)
+        fh = logging.FileHandler(filename)
+        formatter = logging.Formatter(FORMAT)
+        fh.setFormatter(formatter)
+        self.logger.addHandler(fh)
+        self.logger.setLevel(logging.DEBUG)
+
+    def pretty_print(self, *args, **kwargs):
+        string = ' '.join(map(str, args))
+        return self.logger.debug(string)
+
+
+logger = Logger(__name__, 'emulation.log')
+
 
 def create_users(url, players):
     '''Создаем юзеров на серваке'''
@@ -40,9 +62,10 @@ def load_tokens(filename, players, num):
 def delete_orders(url, bank):
     return requests.delete(url + 'api/v1/user/orders/delete-all/', headers={'Authorization': 'JWT ' + bank.token})
 
+
 def create_new_instrument(url, bank):
     return requests.post(url + 'api/v1/user/instruments/', headers={'Authorization': 'JWT ' + bank.token},
-                        json={'name': 'emulation #' + str(datetime.now())}).json()['id']
+                         json={'name': 'emulation #' + str(datetime.now())}).json()['id']
 
 
 class Person:
@@ -62,7 +85,7 @@ class Person:
         self.maxproportion, self.minproportion = maxproportion, minproportion
         self.buyp, self.skipp, self.sellp = buyp, skipp, sellp
 
-    def action(self, url, assetreturn,inst_id):
+    def action(self, url, assetreturn, inst_id):
         buy, sell = self.buyp, self.sellp
         deltareturn = self.targetreturn - self.curreturn
         if deltareturn >= 0:
@@ -71,9 +94,9 @@ class Person:
             sell = sell - deltareturn / self.curreturn * (1 - self.skipp - self.buyp - self.sellp)
         rnd = np.random.uniform()
         if rnd <= buy:
-            return self.place_buy(url, deltareturn, assetreturn,inst_id)
+            return self.place_buy(url, deltareturn, assetreturn, inst_id)
         elif rnd <= buy + sell:
-            return self.place_sell(url, deltareturn, assetreturn,inst_id)
+            return self.place_sell(url, deltareturn, assetreturn, inst_id)
         else:
             return self.skip()
 
@@ -96,7 +119,7 @@ class Person:
                      np.maximum(deltareturn / np.maximum(self.targetreturn, self.curreturn) * \
                                 (self.maxproportion - self.minproportion), 0)
         rtrn = assetreturn * (1 + np.sign(deltareturn) * 0.01 * np.random.exponential(np.abs(deltareturn /
-                                                                                            np.maximum(
+                                                                                             np.maximum(
                                                                                                  self.targetreturn,
                                                                                                  self.curreturn))))
         price = 1 / (1 + rtrn)
@@ -115,8 +138,8 @@ class Person:
         requests.put(url + 'api/v1/user/fiat-balance/' + str(id),
                      json={'amount': self.curmoney}, headers={'Authorization': 'JWT ' + self.token}).json()
 
-    def update_balance(self, url,inst_id):
-        self.curassets = requests.get(url + 'api/v1/user/instrument-balance/?instrument_id=' +str(inst_id),
+    def update_balance(self, url, inst_id):
+        self.curassets = requests.get(url + 'api/v1/user/instrument-balance/?instrument_id=' + str(inst_id),
                                       headers={'Authorization': 'JWT ' + self.token}).json()[0]['amount']
         self.assets.append(self.curassets)
         self.curmoney = requests.get(url + 'api/v1/user/fiat-balance/',
@@ -131,7 +154,7 @@ class Person:
                                    'total_sum': math.floor(amount * 1e4) / 1e4,
                                    'expires_in': 4, 'instrument_id': inst_id}).json()
 
-    def place_sell(self, url, deltareturn, assetreturn,inst_id):
+    def place_sell(self, url, deltareturn, assetreturn, inst_id):
         amount, assetreturn, price = self.sell(deltareturn, assetreturn)
         return requests.post(url + 'api/v1/user/orders/', headers={'Authorization': 'JWT ' + self.token},
                              json={'type': 'sell', 'price': math.floor(price * 1e4) / 1e4,
@@ -139,8 +162,9 @@ class Person:
                                    'expires_in': 4, 'instrument_id': inst_id}).json()
 
     def info(self):
-        print('Cur money: ', self.curmoney, ' Cur assets: ', self.curassets, ' Target return: ', self.targetreturn,
-              ' Cur return: ', self.curreturn)
+        logger.pretty_print('Cur money: ', self.curmoney, ' Cur assets: ', self.curassets, ' Target return: ',
+                            self.targetreturn,
+                            ' Cur return: ', self.curreturn)
 
 
 class Bank:
@@ -203,40 +227,40 @@ def emulate(url=None, duration=None, yearreturn=None, bank=None, peoples=None, i
     keys = ['type', 'remaining_sum', 'price', 'status']
     for i in range(duration):
         delete_orders(url, bank)
-        print('\n\nDay ', i)
+        logger.pretty_print('\n\nDay ', i)
         curreturn = (duration / 365) * (yearreturn - yearreturn / duration * i)
         perm = np.random.permutation(len(peoples))
         money, assets = 0, 0
 
         if bank.curassets >= 0:
-            print('Bank order')
+            logger.pretty_print('Bank order')
             order = bank.place_order(url, 1.1 * curreturn, inst_id)
             for k in keys:
-                print(order[k], end=' ')
+                logger.pretty_print(order[k])
 
         for ind in perm:
             order = peoples[ind].action(url, curreturn, inst_id)
-            print('\nOrder #', ind)
+            logger.pretty_print('\nOrder #', ind)
             for k in keys:
-                print(order[k], end=' ')
+                logger.pretty_print(order[k])
 
-        print()
+        # logger.pretty_print()
 
         for player in peoples:
-            player.update_balance(url,inst_id)
+            player.update_balance(url, inst_id)
             player.info()
             money += player.curmoney
             assets += player.curassets
 
-        bank.update_balance(url,inst_id)
+        bank.update_balance(url, inst_id)
         money += bank.curmoney
         assets += bank.curassets
-        print('Bank money:', bank.curmoney, ' Bank assets: ', bank.curassets)
-        print('Money:', money, ' Assets: ', assets)
+        logger.pretty_print('Bank money:', bank.curmoney, ' Bank assets: ', bank.curassets)
+        logger.pretty_print('Money:', money, ' Assets: ', assets)
 
 
 def run_emulation(url='http://client-api.dlbas.me/', days=50, yearreturn=.15, nplaysers=3, meanmoney=100, assets=800,
-                 meantargetreturn=.15, inst_id=17):
+                  meantargetreturn=.15, inst_id=17):
     # Создали объектов
     num = nplaysers
     days = days
