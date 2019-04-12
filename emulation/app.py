@@ -23,6 +23,7 @@ def index():
 
     p = Process(target=run_emulation, kwargs=dict(
         assets=number_of_token_bags,
+        meanmoney=data.get('meanmoney', 800),
         days=data.get('days'),
         yearreturn=data.get('placementRate'),
         meantargetreturn=data.get('placementRate'),
