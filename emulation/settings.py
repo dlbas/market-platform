@@ -1,5 +1,5 @@
 API_URL = 'http://client-api.dlbas.me/'
-ACCESS_TOKENS_FILE = 'tokens.json'
+LOCK_FILE_NAME = '/tmp/market-platform-emulation-lock'
 
 try:
     from .settings_local import *

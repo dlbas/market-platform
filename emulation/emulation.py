@@ -1,9 +1,13 @@
+import fcntl
+
 import numpy as np
 import requests
 import json
 import math
 from datetime import datetime
 import logging
+
+from . import settings
 
 FORMAT = '%(asctime)-15s %(message)s'
 logging.basicConfig(format=FORMAT)
@@ -261,27 +265,41 @@ def emulate(url=None, duration=None, yearreturn=None, bank=None, peoples=None, i
 
 def run_emulation(url='http://client-api.dlbas.me/', days=50, yearreturn=.15, nplaysers=3, meanmoney=100, assets=800,
                   meantargetreturn=.15, inst_id=17):
-    # Создали объектов
-    num = nplaysers
-    days = days
-    peoples = []
-    bank = Bank(assets=assets)
-    url = url
-    bank.get_token(url)
+    """
+    Runs emulation. Throws BlockingIOError exception if another round of emulation was already ran.
+    :param url:
+    :param days:
+    :param yearreturn:
+    :param nplaysers:
+    :param meanmoney:
+    :param assets:
+    :param meantargetreturn:
+    :param inst_id:
+    """
+    with open(settings.LOCK_FILE_NAME, 'w') as lockfile:
+        fcntl.flock(lockfile,
+                    fcntl.LOCK_EX | fcntl.LOCK_NB)  # locks until emulation loop does not end, can throw BlockingIOError here
+        # Создали объектов
+        num = nplaysers
+        days = days
+        peoples = []
+        bank = Bank(assets=assets)
+        url = url
+        bank.get_token(url)
 
-    for i in range(num):
-        email = "1bot" + str(i) + "@mail.ru"
-        targetreturn = meantargetreturn * days / 365
-        target = math.floor(np.random.lognormal(np.log(targetreturn), .1 * targetreturn) * 1e4) / 1e4
-        money = math.floor(np.random.uniform(0.6 * meanmoney, 1.4 * meanmoney) * 1e4) / 1e4
-        peoples.append(Person(email, target, money=money))
-    #    create_users(url, peoples)
-    get_tokens(url, peoples)
-    for i in peoples:
-        i.put_balance(url, inst_id)
-    bank.put_balance(url, inst_id)
+        for i in range(num):
+            email = "1bot" + str(i) + "@mail.ru"
+            targetreturn = meantargetreturn * days / 365
+            target = math.floor(np.random.lognormal(np.log(targetreturn), .1 * targetreturn) * 1e4) / 1e4
+            money = math.floor(np.random.uniform(0.6 * meanmoney, 1.4 * meanmoney) * 1e4) / 1e4
+            peoples.append(Person(email, target, money=money))
+        #    create_users(url, peoples)
+        get_tokens(url, peoples)
+        for i in peoples:
+            i.put_balance(url, inst_id)
+        bank.put_balance(url, inst_id)
 
-    emulate(url=url, duration=days, yearreturn=yearreturn, bank=bank, peoples=peoples, inst_id=inst_id)
+        emulate(url=url, duration=days, yearreturn=yearreturn, bank=bank, peoples=peoples, inst_id=inst_id)
 
 
 if __name__ == '__main__':
