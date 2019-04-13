@@ -1,5 +1,5 @@
 API_URL = 'http://client-api.dlbas.me/'
-LOCK_FILE_NAME = '/tmp/market-platform-emulation-lock'
+LOCK_FILE_NAME = '/var/lock/market-platform-emulation-lock'
 
 try:
     from .settings_local import *
