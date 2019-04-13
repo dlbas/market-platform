@@ -35,8 +35,12 @@ def has_flock(fd):
         return False
 
 
-@app.route('/emulate', methods=['GET', 'POST'])
+@app.route('/emulate', methods=['POST'])
 def emulate():
+    """
+    Listens for incoming POST request with emulation parameters
+    :return:
+    """
     # TODO: this
     data = json.loads(request.data)
     number_of_token_bags = tokenize(
@@ -62,4 +66,17 @@ def emulate():
         nplaysers=3)  # TODO: hardcode
                       )
     process.start()
+    return Response(status=200)
+
+
+@app.route('/results', methods=['GET'])
+def results():
+    """
+    Listens for incoming GET request and returns emulation statistics (TBA)
+    :return:
+    """
+    with open(settings.LOCK_FILE_NAME, 'w') as lockfile:
+        if has_flock(lockfile):
+            return Response(status=503)
+    #  TODO: this
     return Response(status=200)
