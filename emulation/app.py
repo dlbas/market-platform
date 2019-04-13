@@ -1,5 +1,6 @@
 import json
 import fcntl
+import logging
 
 from flask import Flask, request, Response
 from multiprocessing import Process
@@ -12,6 +13,10 @@ app = Flask(__name__)
 
 process = None  # made process a global to avoid zombie process
 
+FORMAT = '%(asctime)-15s %(message)s'
+logging.basicConfig(format=FORMAT)
+
+logger = logging.getLogger(__name__)
 
 def has_flock(fd):
     """
@@ -42,6 +47,7 @@ def emulate():
 
     with open(settings.LOCK_FILE_NAME, 'w') as lockfile:
         if has_flock(lockfile):
+            logger.warning('Could not acquire lock.')
             return Response(status=503)
     global process
     process = Process(target=run_emulation, kwargs=dict(
