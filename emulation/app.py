@@ -18,6 +18,7 @@ logging.basicConfig(format=FORMAT)
 
 logger = logging.getLogger(__name__)
 
+
 def has_flock(fd):
     """
     Checks if fd has flock over it
@@ -50,6 +51,8 @@ def emulate():
             logger.warning('Could not acquire lock.')
             return Response(status=503)
     global process
+    if process is not None:
+        process.join()  # to avoid zombie process
     process = Process(target=run_emulation, kwargs=dict(
         assets=number_of_token_bags,
         meanmoney=data.get('meanmoney', 800),
