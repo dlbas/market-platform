@@ -207,9 +207,9 @@ class StatisticsAPIView(views.APIView):
         liquidity_rate = models.Order.get_liquidity_rate(instrument)
         placed_assets_rate = models.Order.get_placed_assets_rate(instrument)
 
-        models.OrderPriceHistory.objects.create(price=avg_price, instrument=instrument)
-        models.LiquidityHistory.objects.create(value=liquidity_rate, instrument=instrument)
-        models.PlacedAssetsHistory.objects.create(value=placed_assets_rate, instrument=instrument)
+        models.OrderPriceHistory.objects.create(price=avg_price, instrument=instrument, uuid=emulation_uuid)
+        models.LiquidityHistory.objects.create(value=liquidity_rate, instrument=instrument, uuid=emulation_uuid)
+        models.PlacedAssetsHistory.objects.create(value=placed_assets_rate, instrument=instrument, uuid=emulation_uuid)
 
         return Response({'result': 'ok'}, status=200)
 
