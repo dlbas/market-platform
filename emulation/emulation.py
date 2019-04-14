@@ -65,7 +65,7 @@ def load_tokens(filename, players, num):
 
 
 def write_stats(url, instrument_id, emulation_uuid):
-    return requests.post(url + 'stats/', json={
+    return requests.post(url + 'api/v1/user/stats/', json={
         'instrument_id': instrument_id,
         'emulation_uuid': str(emulation_uuid),
     })
