@@ -195,7 +195,7 @@ class StatisticsAPIView(views.APIView):
         :return:
         """
         instrument_id = self.request.data.get('instrument_id')
-        emulation_uuid = self.request.data.get('uuid')
+        emulation_uuid = self.request.data.get('emulation_uuid')
         if not emulation_uuid:
             return Response({'result': 'emulation_uuid was not provided'}, status=400)
         if not instrument_id:
