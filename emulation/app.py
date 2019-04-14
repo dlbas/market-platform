@@ -89,5 +89,5 @@ def results():
         if has_flock(lockfile):
             return Response(status=503)
 
-    data = requests.get(settings.API_URL + 'api/v1/stats/', params={'uuid': request.args.get('uuid')}).json()
-    return Response(data, status=200)
+    data = requests.get(settings.API_URL + 'api/v1/user/stats/', params={'uuid': request.args.get('uuid')}).json()
+    return Response(json.dumps(data), status=200, content_type='application/json')
