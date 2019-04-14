@@ -228,8 +228,8 @@ class StatisticsAPIView(views.APIView):
                                                               many=True)
         return Response({
             'result': {
-                'price_stats': price_stats.data,
-                'liquidity_stats': liquidity_stats.data,
-                'placement_stats': placement_stats.data,
+                'price_stats': [v.get('price', 0) for v in price_stats.data],
+                'liquidity_stats': [v.get('value', 0) for v in liquidity_stats.data],
+                'placement_stats': [v.get('value', 0) for v in placement_stats.data],
             }
         }, status=200)
