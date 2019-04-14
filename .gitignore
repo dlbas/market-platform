@@ -108,6 +108,7 @@ venv.bak/
 
 # pycharm
 .idea/
+*.http
 
 # local settings
 settings_local.py

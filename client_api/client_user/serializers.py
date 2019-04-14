@@ -261,3 +261,21 @@ class InstrumentBalanceSerializer(serializers.ModelSerializer):
         instance.amount = validated_data.get('amount', 0)
         instance.save()
         return instance
+
+
+class OrderPriceHistorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.OrderPriceHistory
+        fields = ('price',)
+
+
+class LiquidityRateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.LiquidityHistory
+        fields = ('value',)
+
+
+class PlacementRateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.PlacedAssetsHistory
+        fields = ('value',)

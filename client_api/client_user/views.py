@@ -184,3 +184,51 @@ class InstrumentBalanceApiView(UpdateModelMixin, generics.GenericAPIView):
 
     def put(self, request, *args, **kwargs):
         return self.update(request, *args, **kwargs)
+
+
+class StatisticsAPIView(generics.GenericAPIView):
+
+    def post(self):
+        """
+        Tell API to write statistics about current emulation round
+        :return:
+        """
+        instrument_id = self.request.data.get('instrument_id')
+        emulation_uuid = self.request.data.get('uuid')
+        if not emulation_uuid:
+            return Response(status=400)
+        if not instrument_id:
+            instrument = models.Instrument.objects.order_by('created_at_dt').last()
+        else:
+            instrument = models.Instrument.objects.get(id=instrument_id)
+
+        avg_price = models.Order.get_avg_price(instrument)
+        liquidity_rate = models.Order.get_liquidity_rate(instrument)
+        placed_assets_rate = models.Order.get_placed_assets_rate(instrument)
+
+        models.OrderPriceHistory.objects.create(price=avg_price, instrument=instrument)
+        models.LiquidityHistory.objects.create(value=liquidity_rate, instrument=instrument)
+        models.PlacedAssetsHistory.objects.create(value=placed_assets_rate, instrument=instrument)
+
+        return Response({'result': 'ok'}, status=200)
+
+    def get(self):
+        """
+        Retrieve stats about current emulation round
+        """
+        uuid = self.request.query_params.get('uuid')
+        if not uuid:
+            return Response(status=400)
+        price_stats = serializers.OrderPriceHistorySerializer(models.OrderPriceHistory.objects.filter(uuid=uuid),
+                                                              many=True)
+        liquidity_stats = serializers.LiquidityRateSerializer(models.LiquidityHistory.objects.filter(uuid=uuid),
+                                                              many=True)
+        placement_stats = serializers.PlacementRateSerializer(models.PlacedAssetsHistory.objects.filter(uuid=uuid),
+                                                              many=True)
+        return Response({
+            'result': {
+                'price_stats': price_stats.data,
+                'liquidity_stats': liquidity_stats.data,
+                'placement_stats': placement_stats.data,
+            }
+        }, status=200)
