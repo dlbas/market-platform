@@ -186,9 +186,10 @@ class InstrumentBalanceApiView(UpdateModelMixin, generics.GenericAPIView):
         return self.update(request, *args, **kwargs)
 
 
-class StatisticsAPIView(generics.GenericAPIView):
+class StatisticsAPIView(views.APIView):
+    permission_classes = (permissions.AllowAny, )
 
-    def post(self):
+    def post(self, request, *args, **kwargs):
         """
         Tell API to write statistics about current emulation round
         :return:
@@ -196,7 +197,7 @@ class StatisticsAPIView(generics.GenericAPIView):
         instrument_id = self.request.data.get('instrument_id')
         emulation_uuid = self.request.data.get('uuid')
         if not emulation_uuid:
-            return Response(status=400)
+            return Response({'result': 'emulation_uuid was not provided'}, status=400)
         if not instrument_id:
             instrument = models.Instrument.objects.order_by('created_at_dt').last()
         else:
@@ -212,13 +213,13 @@ class StatisticsAPIView(generics.GenericAPIView):
 
         return Response({'result': 'ok'}, status=200)
 
-    def get(self):
+    def get(self, request, *args, **kwargs):
         """
         Retrieve stats about current emulation round
         """
         uuid = self.request.query_params.get('uuid')
         if not uuid:
-            return Response(status=400)
+            return Response({'result': 'uuid was not provided'}, status=400)
         price_stats = serializers.OrderPriceHistorySerializer(models.OrderPriceHistory.objects.filter(uuid=uuid),
                                                               many=True)
         liquidity_stats = serializers.LiquidityRateSerializer(models.LiquidityHistory.objects.filter(uuid=uuid),

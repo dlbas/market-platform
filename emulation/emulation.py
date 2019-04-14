@@ -6,6 +6,7 @@ import json
 import math
 from datetime import datetime
 import logging
+import uuid
 
 from . import settings
 
@@ -61,6 +62,13 @@ def load_tokens(filename, players, num):
         tokens = json.load(file)
     for i in range(num):
         players[i].token = tokens[str(i)]
+
+
+def write_stats(url, instrument_id, emulation_uuid):
+    return requests.post(url + 'stats/', json={
+        'instrument_id': instrument_id,
+        'emulation_uuid': str(emulation_uuid),
+    })
 
 
 def delete_orders(url, bank):
@@ -227,7 +235,17 @@ def dump_info(filename, players, bank):
         json.dump(dic, outfile)
 
 
-def emulate(url=None, duration=None, yearreturn=None, bank=None, peoples=None, inst_id=1):
+def emulate(emulation_uuid, url=None, duration=None, yearreturn=None, bank=None, peoples=None, inst_id=1, ):
+    """
+
+    :param emulation_uuid:
+    :param url:
+    :param duration:
+    :param yearreturn:
+    :param bank:
+    :param peoples:
+    :param inst_id:
+    """
     keys = ['type', 'remaining_sum', 'price', 'status']
     for i in range(duration):
         delete_orders(url, bank)
@@ -261,12 +279,15 @@ def emulate(url=None, duration=None, yearreturn=None, bank=None, peoples=None, i
         assets += bank.curassets
         logger.pretty_print('Bank money:', bank.curmoney, ' Bank assets: ', bank.curassets)
         logger.pretty_print('Money:', money, ' Assets: ', assets)
+        write_stats(url, inst_id, emulation_uuid)
 
 
-def run_emulation(url='http://client-api.dlbas.me/', days=50, yearreturn=.15, nplaysers=3, meanmoney=100, assets=800,
+def run_emulation(emulation_uuid, url='http://client-api.dlbas.me/', days=50, yearreturn=.15, nplaysers=3,
+                  meanmoney=100, assets=800,
                   meantargetreturn=.15, inst_id=17):
     """
     Runs emulation. Throws BlockingIOError exception if another round of emulation was already ran.
+    :param emulation_uuid:
     :param url:
     :param days:
     :param yearreturn:
@@ -299,8 +320,9 @@ def run_emulation(url='http://client-api.dlbas.me/', days=50, yearreturn=.15, np
             i.put_balance(url, inst_id)
         bank.put_balance(url, inst_id)
 
-        emulate(url=url, duration=days, yearreturn=yearreturn, bank=bank, peoples=peoples, inst_id=inst_id)
+        emulate(url=url, duration=days, yearreturn=yearreturn, bank=bank, peoples=peoples, inst_id=inst_id,
+                emulation_uuid=emulation_uuid)
 
 
 if __name__ == '__main__':
-    run_emulation()
+    run_emulation(uuid.uuid4())

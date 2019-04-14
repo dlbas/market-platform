@@ -1,6 +1,8 @@
 import json
 import fcntl
 import logging
+import requests
+import uuid
 
 from flask import Flask, request, Response
 from multiprocessing import Process
@@ -57,13 +59,16 @@ def emulate():
     global process
     if process is not None:
         process.join()  # to avoid zombie process
-    process = Process(target=run_emulation, kwargs=dict(
-        assets=number_of_token_bags,
-        meanmoney=data.get('meanmoney', 800),
-        days=data.get('days'),
-        yearreturn=data.get('placementRate'),
-        meantargetreturn=data.get('placementRate'),
-        nplaysers=3)  # TODO: hardcode
+    process = Process(target=run_emulation,
+                      kwargs=dict(
+                          emulation_uuid=uuid.uuid4(),
+                          assets=number_of_token_bags,
+                          meanmoney=data.get('meanmoney', 800),
+                          days=data.get('days'),
+                          yearreturn=data.get('placementRate'),
+                          meantargetreturn=data.get('placementRate'),
+                          nplaysers=3
+                      )  # TODO: hardcode
                       )
     process.start()
     return Response(status=200)
@@ -78,5 +83,6 @@ def results():
     with open(settings.LOCK_FILE_NAME, 'w') as lockfile:
         if has_flock(lockfile):
             return Response(status=503)
-    #  TODO: this
-    return Response(status=200)
+
+    data = requests.get(settings.API_URL + 'api/v1/stats/', params={'uuid': request.args.get('uuid')}).json()
+    return Response(data, status=200)

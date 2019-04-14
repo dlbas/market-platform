@@ -22,6 +22,7 @@ urlpatterns = [
     url(r'fiat-balance/(?P<id>\d*)', views.FiatBalanceApiView.as_view()),
     url(r'instrument-balance/(?P<id>\d*)', views.InstrumentBalanceApiView.as_view()),
     url(r'orders/delete-all/', views.OrdersViewSet.as_view({'delete': 'destroy_all'})),
+    url(r'stats/', views.StatisticsAPIView.as_view()),
     url(r'^', include(router.urls)),
 ]
 
