@@ -59,9 +59,10 @@ def emulate():
     global process
     if process is not None:
         process.join()  # to avoid zombie process
+    emulation_uuid=uuid.uuid4()
     process = Process(target=run_emulation,
                       kwargs=dict(
-                          emulation_uuid=uuid.uuid4(),
+                          emulation_uuid=emulation_uuid,
                           assets=number_of_token_bags,
                           meanmoney=data.get('meanmoney', 800),
                           days=data.get('days'),
@@ -71,7 +72,7 @@ def emulate():
                       )  # TODO: hardcode
                       )
     process.start()
-    return Response(status=200)
+    return Response({'result': {'emulation_uuid': str(emulation_uuid)}}, status=200)
 
 
 @app.route('/results', methods=['GET'])
