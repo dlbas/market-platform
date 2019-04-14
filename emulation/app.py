@@ -72,7 +72,11 @@ def emulate():
                       )  # TODO: hardcode
                       )
     process.start()
-    return Response({'result': {'emulation_uuid': str(emulation_uuid)}}, status=200)
+    return Response(
+        json.dumps({'result': {'emulation_uuid': str(emulation_uuid)}}),
+        status=200,
+        content_type='application/json'
+    )
 
 
 @app.route('/results', methods=['GET'])
