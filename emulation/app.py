@@ -59,7 +59,7 @@ def emulate():
     global process
     if process is not None:
         process.join()  # to avoid zombie process
-    emulation_uuid=uuid.uuid4()
+    emulation_uuid = uuid.uuid4()
     process = Process(target=run_emulation,
                       kwargs=dict(
                           emulation_uuid=emulation_uuid,
@@ -68,8 +68,8 @@ def emulate():
                           days=data.get('days'),
                           yearreturn=data.get('placementRate'),
                           meantargetreturn=data.get('placementRate'),
-                          nplaysers=3
-                      )  # TODO: hardcode
+                          nplaysers=data.get('peopleCount', 10)
+                      )
                       )
     process.start()
     return Response(
@@ -89,5 +89,7 @@ def results():
         if has_flock(lockfile):
             return Response(status=503)
 
-    data = requests.get(settings.API_URL + 'api/v1/user/stats/', params={'uuid': request.args.get('uuid')}).json()
-    return Response(json.dumps(data), status=200, content_type='application/json')
+    data = requests.get(settings.API_URL + 'api/v1/user/stats/',
+                        params={'uuid': request.args.get('uuid')}).json()
+    return Response(json.dumps(data), status=200,
+                    content_type='application/json')
