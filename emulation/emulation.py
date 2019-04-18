@@ -8,7 +8,7 @@ from datetime import datetime
 import logging
 import uuid
 
-from . import settings
+import settings
 
 FORMAT = '%(asctime)-15s %(message)s'
 logging.basicConfig(format=FORMAT)
@@ -39,11 +39,21 @@ def create_users(url, players):
                       json={'email': i.email, 'password': i.password})
 
 
-def get_tokens(url, players):
-    '''Получаем токены c сервера'''
+def get_tokens_or_create_user(url, players):
+    '''Получаем токены c сервера
+        Если токентов нет, то регистрируем пользовотеля
+    '''
     for i in players:
-        i.token = requests.post(url + 'api/v1/user/api-token-auth/',
-                                json={'email': i.email, 'password': i.password}).json()['token']
+        rq = requests.post(url + 'api/v1/user/api-token-auth/',
+                           json={'email': i.email, 'password': i.password})
+        if rq.status_code == 400:
+            requests.post(url + 'api/v1/user/create-user/',
+                          headers={'Content-type': 'application/json'},
+                          json={'email': i.email, 'password': i.password})
+            i.token = requests.post(url + 'api/v1/user/api-token-auth/',
+                                    json={'email': i.email, 'password': i.password}).json()['token']
+        else:
+            i.token = rq.json()['token']
 
 
 def dump_tokens(filename, players):
@@ -157,6 +167,7 @@ class Person:
         self.curmoney = requests.get(url + 'api/v1/user/fiat-balance/',
                                      headers={'Authorization': 'JWT ' + self.token}).json()['amount']
         self.money.append(self.curmoney)
+
         self.curreturn = (self.curmoney + self.curassets - self.money[0]) / self.money[0]
 
     def place_buy(self, url, deltareturn, assetreturn, inst_id):
@@ -174,7 +185,8 @@ class Person:
                                    'expires_in': 4, 'instrument_id': inst_id}).json()
 
     def info(self):
-        logger.pretty_print('Cur money: ', self.curmoney, ' Cur assets: ', self.curassets, ' Target return: ',
+        logger.pretty_print('Bot name', self.email, 'Cur money: ', self.curmoney, ' Cur assets: ', self.curassets,
+                            'Target return: ',
                             self.targetreturn,
                             ' Cur return: ', self.curreturn)
 
@@ -314,8 +326,7 @@ def run_emulation(emulation_uuid, url='http://client-api.dlbas.me/', days=50, ye
             target = math.floor(np.random.lognormal(np.log(targetreturn), .1 * targetreturn) * 1e4) / 1e4
             money = math.floor(np.random.uniform(0.6 * meanmoney, 1.4 * meanmoney) * 1e4) / 1e4
             peoples.append(Person(email, target, money=money))
-        #    create_users(url, peoples)
-        get_tokens(url, peoples)
+        get_tokens_or_create_user(url, peoples)
         for i in peoples:
             i.put_balance(url, inst_id)
         bank.put_balance(url, inst_id)
@@ -325,4 +336,4 @@ def run_emulation(emulation_uuid, url='http://client-api.dlbas.me/', days=50, ye
 
 
 if __name__ == '__main__':
-    run_emulation(uuid.uuid4())
+    run_emulation(uuid.uuid4(), nplaysers=10)
