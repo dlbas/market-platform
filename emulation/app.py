@@ -118,7 +118,7 @@ def results():
 
     initial_token_bags = redis.get(str(emulation_uuid) + '__token_bags')
 
-    data['result']['placement_stats'] = [v / initial_token_bags for v in
+    data['result']['placement_stats'] = [v / float(initial_token_bags) for v in
                                          data['result']['placement_stats']]
 
     return Response(json.dumps(data), status=200,
