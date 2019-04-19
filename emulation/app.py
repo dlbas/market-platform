@@ -4,6 +4,8 @@ import logging
 import requests
 import uuid
 
+import redis as _redis
+
 from flask import Flask, request, Response
 from multiprocessing import Process
 
@@ -20,6 +22,8 @@ logging.basicConfig(format=FORMAT)
 
 logger = logging.getLogger(__name__)
 
+redis = _redis.Redis(host=settings.REDIS_HOST, port=settings.REDIS_PORT)
+
 
 def has_flock(fd):
     """
@@ -32,6 +36,21 @@ def has_flock(fd):
     try:
         fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except BlockingIOError:
+        return True
+    else:
+        return False
+
+
+def has_redis_lock(uuid):
+    """
+    Checks if redis has lock on uuid
+    :param uuid:
+    :return:
+    """
+    try:
+        with redis.lock(str(uuid) + '__lock'):
+            pass
+    except _redis.exceptions.LockError:
         return True
     else:
         return False
@@ -60,6 +79,9 @@ def emulate():
     if process is not None:
         process.join()  # to avoid zombie process
     emulation_uuid = uuid.uuid4()
+
+    redis.set(str(emulation_uuid) + '__token_bags', number_of_token_bags)
+
     process = Process(target=run_emulation,
                       kwargs=dict(
                           emulation_uuid=emulation_uuid,
@@ -85,11 +107,19 @@ def results():
     Listens for incoming GET request and returns emulation statistics (TBA)
     :return:
     """
-    with open(settings.LOCK_FILE_NAME, 'w') as lockfile:
-        if has_flock(lockfile):
-            return Response(status=503)
+    emulation_uuid = request.args.get('uuid')
+    if not emulation_uuid:
+        return Response(status=404)
+    if has_redis_lock(emulation_uuid):
+        return Response(status=503)
 
     data = requests.get(settings.API_URL + 'api/v1/user/stats/',
-                        params={'uuid': request.args.get('uuid')}).json()
+                        params={'uuid': emulation_uuid}).json()
+
+    initial_token_bags = redis.get(str(emulation_uuid) + '__token_bags')
+
+    data['result']['placement_stats'] = [v / initial_token_bags for v in
+                                         data['result']['placement_stats']]
+
     return Response(json.dumps(data), status=200,
                     content_type='application/json')
