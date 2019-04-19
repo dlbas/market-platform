@@ -31,7 +31,8 @@ class UserManager(BaseUserManager):
         if not email:
             raise ValueError('The given email must be set')
         with transaction.atomic():
-            user = self.model(email=self.normalize_email(email), **extra_fields)
+            user = self.model(email=self.normalize_email(email),
+                              **extra_fields)
             user.set_password(password)
             user.save()
             # TODO HARDCODE USD
@@ -60,7 +61,9 @@ class ClientUser(AbstractBaseUser):
     email = models.EmailField(max_length=40, unique=True)
     first_name = models.CharField(max_length=30, blank=True)
     last_name = models.CharField(max_length=30, blank=True)
-    status = models.CharField(max_length=128, choices=[(tag.name, tag.value) for tag in ClientUserStatus],
+    status = models.CharField(max_length=128,
+                              choices=[(tag.name, tag.value) for tag in
+                                       ClientUserStatus],
                               default=ClientUserStatus.UNVERIFIED.value)
     is_active = models.BooleanField(default=True)
     password_changed_at_dt = models.DateTimeField(default=timezone.now)
@@ -85,7 +88,8 @@ class ClientUser(AbstractBaseUser):
     def activate(cls, code):
         user = get_object_or_404(cls, email_verification_code=code)
 
-        if not user.is_email_verified and str(user.email_verification_code) == code:
+        if not user.is_email_verified and str(
+                user.email_verification_code) == code:
             user.is_email_verified = True
             user.email_verified_at_dt = timezone.now()
             user.save(update_fields=[
@@ -112,7 +116,8 @@ class ClientUser(AbstractBaseUser):
     def get_two_factor_qr_url(self):
         if not self.totp_token:
             self.generate_totp_token()
-        qr_url = pyotp.totp.TOTP(self.totp_token).provisioning_uri(self.email, issuer_name=settings.TWO_FACTOR_ISSUER)
+        qr_url = pyotp.totp.TOTP(self.totp_token).provisioning_uri(self.email,
+                                                                   issuer_name=settings.TWO_FACTOR_ISSUER)
         return qr_url
 
     def generate_totp_token(self):
@@ -132,7 +137,8 @@ class ClientUser(AbstractBaseUser):
 
 
 class ClientUserIp(models.Model):
-    user = models.ForeignKey(ClientUser, blank=False, null=False, on_delete=models.CASCADE, related_name='user_ips')
+    user = models.ForeignKey(ClientUser, blank=False, null=False,
+                             on_delete=models.CASCADE, related_name='user_ips')
     ip_address = models.GenericIPAddressField(null=False, blank=False)
     user_agent = models.TextField(null=True, blank=True)
     is_approved = models.BooleanField(default=True)
@@ -175,17 +181,22 @@ class InstrumentStatus(Enum):
 class Instrument(models.Model):
     # TODO Create instrument balance for every user when instrument is created
     name = models.CharField(max_length=50)
-    status = models.CharField(max_length=30, choices=[(tag.name, tag.value) for tag in InstrumentStatus],
+    status = models.CharField(max_length=30,
+                              choices=[(tag.name, tag.value) for tag in
+                                       InstrumentStatus],
                               default=InstrumentStatus.ACTIVE.value)
     # these ones for underlying credit
     credit_created_at_d = models.DateField(null=True)
     credit_expires_at_d = models.DateField(null=True)
     # expected values like 15.575 %
-    credit_interest_percentage = models.DecimalField(max_digits=5, decimal_places=3, null=True)
+    credit_interest_percentage = models.DecimalField(max_digits=5,
+                                                     decimal_places=3,
+                                                     null=True)
     created_at_dt = models.DateTimeField(auto_now_add=True)
     updated_at_dt = models.DateTimeField(auto_now=True)
 
-    def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
+    def save(self, force_insert=False, force_update=False, using=None,
+             update_fields=None):
         if not self.pk:
             super().save(force_insert, force_update, using, update_fields)
             self.assign_balances(self.pk)
@@ -194,8 +205,10 @@ class Instrument(models.Model):
 
     def assign_balances(self, instrument_id):
         for user in ClientUser.objects.all():
-            InstrumentBalance.objects.get_or_create(user=user, instrument_id=instrument_id,
-                                                    defaults={'user': user, 'instrument_id': instrument_id})
+            InstrumentBalance.objects.get_or_create(user=user,
+                                                    instrument_id=instrument_id,
+                                                    defaults={'user': user,
+                                                              'instrument_id': instrument_id})
 
     def __str__(self):
         return self.name
@@ -213,14 +226,21 @@ class OrderStatus(Enum):
 
 
 class Order(models.Model):
-    type = models.CharField(max_length=15, choices=[(tag.name, tag.value) for tag in OrderType])
-    status = models.CharField(max_length=30, choices=[(tag.name, tag.value) for tag in OrderStatus],
+    type = models.CharField(max_length=15,
+                            choices=[(tag.name, tag.value) for tag in
+                                     OrderType])
+    status = models.CharField(max_length=30,
+                              choices=[(tag.name, tag.value) for tag in
+                                       OrderStatus],
                               default=OrderStatus.ACTIVE.value)
     price = models.DecimalField(max_digits=20, decimal_places=8)
-    actual_price = models.DecimalField(max_digits=20, decimal_places=8, null=True)
-    instrument = models.ForeignKey(Instrument, on_delete=models.PROTECT, related_name='instrument')
+    actual_price = models.DecimalField(max_digits=20, decimal_places=8,
+                                       null=True)
+    instrument = models.ForeignKey(Instrument, on_delete=models.PROTECT,
+                                   related_name='instrument')
     total_sum = models.DecimalField(max_digits=20, decimal_places=8, default=0)
-    remaining_sum = models.DecimalField(max_digits=20, decimal_places=8, default=0)
+    remaining_sum = models.DecimalField(max_digits=20, decimal_places=8,
+                                        default=0)
     created_at_dt = models.DateTimeField(auto_now_add=True)
     updated_at_dt = models.DateTimeField(auto_now=True)
     # num of seconds in which order expires
@@ -241,24 +261,34 @@ class Order(models.Model):
         # TODO Add fee
         with transaction.atomic():
             trade_amount = min(first.remaining_sum, second.remaining_sum)
-            first_balance = InstrumentBalance.objects.select_for_update().get(user=first.user,
-                                                                              instrument=first.instrument)
-            second_balance = InstrumentBalance.objects.select_for_update().get(user=second.user,
-                                                                               instrument=first.instrument)
-            first_fiat_balance = FiatBalance.objects.select_for_update().get(user=first.user)
-            second_fiat_balance = FiatBalance.objects.select_for_update().get(user=second.user)
+            first_balance = InstrumentBalance.objects.select_for_update().get(
+                user=first.user,
+                instrument=first.instrument)
+            second_balance = InstrumentBalance.objects.select_for_update().get(
+                user=second.user,
+                instrument=first.instrument)
+            first_fiat_balance = FiatBalance.objects.select_for_update().get(
+                user=first.user)
+            second_fiat_balance = FiatBalance.objects.select_for_update().get(
+                user=second.user)
             if not first_balance:
-                raise ValueError(f'Balance for user {first.user} in instrument not found')
+                raise ValueError(
+                    f'Balance for user {first.user} in instrument not found')
             if not second_balance:
-                raise ValueError(f'Balance for user {second.user} in instrument not found')
+                raise ValueError(
+                    f'Balance for user {second.user} in instrument not found')
             if first.type == OrderType.BUY.value and first_fiat_balance.amount < trade_amount * second.price:
-                raise ValueError(f'Not enough funds for {first_fiat_balance.user}')
+                raise ValueError(
+                    f'Not enough funds for {first_fiat_balance.user}')
             if first.type == OrderType.SELL.value and second_fiat_balance.amount < trade_amount * second.price:
-                raise ValueError(f'Not enough funds for {second_fiat_balance.user}')
+                raise ValueError(
+                    f'Not enough funds for {second_fiat_balance.user}')
             if first.type == OrderType.BUY.value and second_balance.amount < trade_amount:
-                raise ValueError(f'Not enough instrument balance for {second_balance.user}')
+                raise ValueError(
+                    f'Not enough instrument balance for {second_balance.user}')
             if first.type == OrderType.SELL.value and first_balance.amount < trade_amount:
-                raise ValueError(f'Not enough instrument balance for {first_balance.user}')
+                raise ValueError(
+                    f'Not enough instrument balance for {first_balance.user}')
             first.remaining_sum -= trade_amount
             second.remaining_sum -= trade_amount
             if first.type == OrderType.BUY.value:
@@ -291,18 +321,21 @@ class Order(models.Model):
         with transaction.atomic():
             if counter_order_type == OrderType.SELL.value:
                 counter_orders = cls.objects.select_for_update().filter(
-                    type=counter_order_type, instrument=order.instrument, price__lte=order.price
+                    type=counter_order_type, instrument=order.instrument,
+                    price__lte=order.price
                 ).order_by('price', 'created_at_dt')
             elif counter_order_type == OrderType.BUY.value:
                 counter_orders = cls.objects.select_for_update().filter(
-                    type=counter_order_type, instrument=order.instrument, price__gte=order.price
+                    type=counter_order_type, instrument=order.instrument,
+                    price__gte=order.price
                 ).order_by('-price', 'created_at_dt')
             if not counter_orders:
                 # place order into the order book
                 order.save()
                 return order
             for counter_order in counter_orders:
-                order, counter_order, *balances = cls._trade_orders(order, counter_order)
+                order, counter_order, *balances = cls._trade_orders(order,
+                                                                    counter_order)
                 order.save()
                 counter_order.save()
                 for balance in balances:
@@ -313,17 +346,24 @@ class Order(models.Model):
 
     @classmethod
     def get_avg_price(cls, instrument):
-        avg_price = cls.objects.filter(instrument=instrument).aggregate(models.Avg('price'))
+        avg_price = cls.objects.filter(instrument=instrument).aggregate(
+            models.Avg('price'))
         return avg_price.get('price__avg', 0)
 
     @classmethod
     def get_liquidity_rate(cls, instrument):
-        completed_count = cls.objects.filter(status=OrderStatus.COMPLETED.value, instrument=instrument).count()
+        completed_count = cls.objects.filter(
+            status=OrderStatus.COMPLETED.value, instrument=instrument).count()
         total_count = cls.objects.filter(instrument=instrument).count()
         return completed_count / total_count if total_count > 0 else 0
 
     @classmethod
     def get_placed_assets_rate(cls, instrument):
+        bank_balance = InstrumentBalance.objects.filter(
+            user__email__contains='bank', instrument=instrument).order_by(
+            'user__created_at_dt').last()
+        if bank_balance:
+            return bank_balance.amount
         return 0
 
 

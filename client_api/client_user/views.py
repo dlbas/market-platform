@@ -180,14 +180,16 @@ class InstrumentBalanceApiView(UpdateModelMixin, generics.GenericAPIView):
         return models.InstrumentBalance.objects.filter(user=self.request.user)
 
     def get(self, request, *args, **kwargs):
-        return Response(self.get_serializer(self.filter_queryset(self.get_queryset()), many=True).data)
+        return Response(
+            self.get_serializer(self.filter_queryset(self.get_queryset()),
+                                many=True).data)
 
     def put(self, request, *args, **kwargs):
         return self.update(request, *args, **kwargs)
 
 
 class StatisticsAPIView(views.APIView):
-    permission_classes = (permissions.AllowAny, )
+    permission_classes = (permissions.AllowAny,)
 
     def post(self, request, *args, **kwargs):
         """
@@ -197,9 +199,11 @@ class StatisticsAPIView(views.APIView):
         instrument_id = self.request.data.get('instrument_id')
         emulation_uuid = self.request.data.get('emulation_uuid')
         if not emulation_uuid:
-            return Response({'result': 'emulation_uuid was not provided'}, status=400)
+            return Response({'result': 'emulation_uuid was not provided'},
+                            status=400)
         if not instrument_id:
-            instrument = models.Instrument.objects.order_by('created_at_dt').last()
+            instrument = models.Instrument.objects.order_by(
+                'created_at_dt').last()
         else:
             instrument = models.Instrument.objects.get(id=instrument_id)
 
@@ -207,9 +211,15 @@ class StatisticsAPIView(views.APIView):
         liquidity_rate = models.Order.get_liquidity_rate(instrument)
         placed_assets_rate = models.Order.get_placed_assets_rate(instrument)
 
-        models.OrderPriceHistory.objects.create(price=avg_price, instrument=instrument, uuid=emulation_uuid)
-        models.LiquidityHistory.objects.create(value=liquidity_rate, instrument=instrument, uuid=emulation_uuid)
-        models.PlacedAssetsHistory.objects.create(value=placed_assets_rate, instrument=instrument, uuid=emulation_uuid)
+        models.OrderPriceHistory.objects.create(price=avg_price,
+                                                instrument=instrument,
+                                                uuid=emulation_uuid)
+        models.LiquidityHistory.objects.create(value=liquidity_rate,
+                                               instrument=instrument,
+                                               uuid=emulation_uuid)
+        models.PlacedAssetsHistory.objects.create(value=placed_assets_rate,
+                                                  instrument=instrument,
+                                                  uuid=emulation_uuid)
 
         return Response({'result': 'ok'}, status=200)
 
@@ -220,16 +230,21 @@ class StatisticsAPIView(views.APIView):
         uuid = self.request.query_params.get('uuid')
         if not uuid:
             return Response({'result': 'uuid was not provided'}, status=400)
-        price_stats = serializers.OrderPriceHistorySerializer(models.OrderPriceHistory.objects.filter(uuid=uuid),
-                                                              many=True)
-        liquidity_stats = serializers.LiquidityRateSerializer(models.LiquidityHistory.objects.filter(uuid=uuid),
-                                                              many=True)
-        placement_stats = serializers.PlacementRateSerializer(models.PlacedAssetsHistory.objects.filter(uuid=uuid),
-                                                              many=True)
+        price_stats = serializers.OrderPriceHistorySerializer(
+            models.OrderPriceHistory.objects.filter(uuid=uuid),
+            many=True)
+        liquidity_stats = serializers.LiquidityRateSerializer(
+            models.LiquidityHistory.objects.filter(uuid=uuid),
+            many=True)
+        placement_stats = serializers.PlacementRateSerializer(
+            models.PlacedAssetsHistory.objects.filter(uuid=uuid),
+            many=True)
         return Response({
             'result': {
                 'price_stats': [v.get('price', 0) for v in price_stats.data],
-                'liquidity_stats': [v.get('value', 0) for v in liquidity_stats.data],
-                'placement_stats': [v.get('value', 0) for v in placement_stats.data],
+                'liquidity_stats': [v.get('value', 0) for v in
+                                    liquidity_stats.data],
+                'placement_stats': [v.get('value', 0) for v in
+                                    placement_stats.data],
             }
         }, status=200)
