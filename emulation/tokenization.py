@@ -7,8 +7,10 @@ Original file is located at
 
 import pandas as pd
 import numpy as np
+from warnings import filterwarnings
+filterwarnings('ignore')
 
-
+#Создаем класс для кредитов с необходимыми параметрами
 class Credit:
     def __init__(self, PD, LGD, value, E, D, time):
         self.PD = PD
@@ -33,17 +35,17 @@ class Credit:
 
 """c.defaulted"""
 
-
+#Эта функция генерирует кредиты
 def create_credits(k, pd, lgd, value, tlow = 365, thigh = 365 * 5, 
                    elow = 0.1, ehigh = 0.2, dlow = 0.09,
                    dhigh = 0.11):
     credits=[]
     for i in range(k):
-        credits.append(Credit(pd,lgd,np.random.normal(value,0.3 * value),np.random.uniform(low=elow,high=ehigh),np.random.uniform(low=dlow,high=dhigh),np.random.randint(low=tlow,high=thigh+1)))
+        credits.append(Credit(np.random.normal(pd,pd * 0.3),np.random.normal(lgd, lgd *0.2),np.random.normal(value,0.3 * value),np.random.uniform(low=elow,high=ehigh),np.random.uniform(low=dlow,high=dhigh),np.random.randint(low=tlow,high=thigh+1)))
     return credits
 
 
-# В этом блоке мы извлекаем данные о кредитах из документа Кредиты и с помощью формулы,вычисленной в документе,рассчитываем размер токена для
+# В этом блоке мы записываем характеристики кредитов в списки, рассчитываем размер токена для
 # каждого кредита и вычисляем количество токенов,на которые делим каждый кредит
 def token_division(k, creditiki, D, PD, LGD, P, DI, I, R, N):
     for i in range(k):
@@ -56,17 +58,15 @@ def token_division(k, creditiki, D, PD, LGD, P, DI, I, R, N):
         R.append(ch)
         N.append(float(P[i]) / ch)
 
-
+#В этой функции создаем из имеющихся списков с характеристиками кредитов датафрейм
 def create_dframe(D, PD, LGD, P, DI, I, R, N):
-    #Создаем датафрейм и сортируем его по количеству токенов,на которые делятся кредитов.
-    #В него записываем всю инфу о кредитах.
     dframe = pd.DataFrame({'D':D,'PD':PD, 'LGD':LGD, 'P':P, 'DI':DI, 'I':I, 'R':R, 'N':N})
     credits_dframe = dframe.sort_values('N', ascending = False)
     credits_dframe = credits_dframe.reset_index()
     del credits_dframe['index']
     return credits_dframe
 
-
+#Здесь непосредственно рассчитываем количество портфелей с токенами, получающихся из данных кредитов
 def create_bags(credits_dframe, tok_in_bag):
     koltokbags = 0
     while len(credits_dframe["N"]) > 0:
@@ -95,8 +95,8 @@ def create_bags(credits_dframe, tok_in_bag):
         min_ind = 0
         minim = credits_dframe["N"][min_ind]
         #повторяем процедуру с нахождением минимума.Если количество оставшихся кредитов меньше k, то есть невозможно составить портфель так,
-        #чтобы в портфеле было максимум по одному токену с каждого кредита, то добавляем обязательства банка(такие штуки,которые выпускает банк
-        #по предъявлении которых спустя время он гарантированно выдаст деньги)Таким образом,мы искусственно добавляем еще несколько кредитов
+        #чтобы в портфеле было максимум по одному токену с каждого кредита, то добавляем обязательства банка
+        #Таким образом,мы искусственно добавляем еще несколько "кредитов"
         #чтобы их опять стало k и мы могли сделать портфели.Повторяем операцию,пока в нашем датафрейме совсем не останется кредитов.
         if len(credits_dframe["N"]) < tok_in_bag:
             for i in range(len(credits_dframe["N"])):
@@ -104,7 +104,7 @@ def create_bags(credits_dframe, tok_in_bag):
                     minim = credits_dframe["N"][i]
                     min_ind = i
             while len(credits_dframe["N"]) < tok_in_bag:
-                #добавление нашего "псевдо" кредита
+                #добавление нашего "псевдо" кредита(векселя)
                 new_record = pd.DataFrame([[credits_dframe["D"][min_ind],credits_dframe["PD"][min_ind],
                                             credits_dframe["LGD"][min_ind],credits_dframe["P"][min_ind],
                                             credits_dframe["DI"][min_ind],credits_dframe["I"][min_ind],
