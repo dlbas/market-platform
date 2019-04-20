@@ -15,4 +15,4 @@ COPY tokenization.py .
 
 RUN pip install -r requirements.txt
 
-ENTRYPOINT ["python", "-m", "flask", "run"]
+ENTRYPOINT ["python", "-m", "flask", "run", "--host", "0.0.0.0"]
