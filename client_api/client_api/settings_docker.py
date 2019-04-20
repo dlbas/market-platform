@@ -11,5 +11,5 @@ DATABASES = {
 
 CELERY_BROKER_URL = 'redis://redis:6379'
 CELERY_RESULT_BACKEND = 'redis://redis:6379'
-API_URL = 'http://0.0.0.0:8000'
+DEBUG = False
 
