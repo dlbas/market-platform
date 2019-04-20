@@ -347,6 +347,7 @@ def emulate(emulation_uuid, url=None, duration=None, yearreturn=None,
         logger.pretty_print('Bank money:', bank.curmoney, ' Bank assets: ',
                             bank.curassets)
         logger.pretty_print('Money:', money, ' Assets: ', assets)
+        print(bank.curassets)
         write_stats(url, inst_id, emulation_uuid)
 
 
@@ -397,4 +398,4 @@ def run_emulation(emulation_uuid, url='http://client-api.dlbas.me/', days=50,
 
 
 if __name__ == '__main__':
-    run_emulation(uuid.uuid4(), nplaysers=10)
+    run_emulation(uuid.uuid4(), url='http://localhost:8000/', nplaysers=10, meantargetreturn=5, yearreturn=5)

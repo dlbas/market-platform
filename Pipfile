@@ -17,9 +17,7 @@ django-celery-results = "*"
 redis = "*"
 gunicorn = "*"
 flask = "*"
-numpy = "*"
 requests = "*"
-pandas = "*"
 
 [dev-packages]
 

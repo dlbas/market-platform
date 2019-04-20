@@ -16,7 +16,6 @@ import datetime
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/2.1/howto/deployment/checklist/
 
@@ -27,7 +26,6 @@ SECRET_KEY = 'l^7o#s$kqf+v5-14$r7bv#ig3wd6ge0pb8yeg5wn4w!=v1o0qh'
 DEBUG = True
 
 ALLOWED_HOSTS = ['*']
-
 
 # Application definition
 
@@ -45,7 +43,6 @@ INSTALLED_APPS = [
     'django_celery_beat',
     'django_celery_results'
 ]
-
 
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': (
@@ -99,7 +96,6 @@ WSGI_APPLICATION = 'client_api.wsgi.application'
 
 STATIC_ROOT = '/www/client-api/'
 
-
 # Database
 # https://docs.djangoproject.com/en/2.1/ref/settings/#databases
 
@@ -112,7 +108,6 @@ DATABASES = {
         'PORT': '5432'
     }
 }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/2.1/ref/settings/#auth-password-validators
@@ -137,7 +132,6 @@ JWT_AUTH = {
     'JWT_EXPIRATION_DELTA': datetime.timedelta(days=30),
     'JWT_REFRESH_EXPIRATION_DELTA': datetime.timedelta(days=7),
 }
-
 
 # Internationalization
 # https://docs.djangoproject.com/en/2.1/topics/i18n/
@@ -171,7 +165,6 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'funky.lory@yandex.ru'
 EMAIL_HOST_PASSWORD = 'daniel'
 
-
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.1/howto/static-files/
 
@@ -183,4 +176,14 @@ except ImportError:
     pass
 
 API_URL = 'http://localhost:8000'
-print("Admin settings were loaded. Chosen database: {}. Port: {}".format(DATABASES.get('default').get('NAME'), DATABASES.get('default').get('PORT')))
+
+try:
+    from .settings_docker import *
+except ImportError:
+    pass
+
+print(
+    "Admin settings were loaded. Chosen database: {}. Host {}. Port: {}".format(
+        DATABASES.get('default').get('NAME'),
+        DATABASES.get('default').get('HOST'),
+        DATABASES.get('default').get('PORT')))
