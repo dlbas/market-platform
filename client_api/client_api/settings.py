@@ -177,10 +177,11 @@ except ImportError:
 
 API_URL = 'http://localhost:8000'
 
-try:
-    from .settings_docker import *
-except ImportError:
-    pass
+if os.environ.get('DOCKER'):
+    try:
+        from .settings_docker import *
+    except ImportError:
+        print('Can not find docker settings')
 
 print(
     "Admin settings were loaded. Chosen database: {}. Host {}. Port: {}".format(

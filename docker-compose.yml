@@ -44,6 +44,8 @@ services:
       - 5000
     networks:
       - default
+    environment:
+      - DOCKER=true
     depends_on:
       - redis
       - postgres
@@ -55,6 +57,8 @@ services:
     restart: unless-stopped
     expose:
       - 8000
+    environment:
+      - DOCKER=true
     networks:
       - default
     depends_on:

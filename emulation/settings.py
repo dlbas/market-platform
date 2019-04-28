@@ -1,3 +1,6 @@
+import os
+
+
 API_URL = 'http://localhost:8000/'
 REDIS_HOST = 'localhost'
 REDIS_PORT = 6379
@@ -11,10 +14,11 @@ try:
 except ImportError:
     pass
 
-try:
-    from .settings_docker import *
+if os.environ.get('DOCKER'):
+    try:
+        from .settings_docker import *
 
-    print(
-        f'Found settings docker. API: {API_URL}, REDIS_HOST: {REDIS_HOST}, REDIS_PORT: {REDIS_PORT}')
-except ImportError:
-    pass
+        print(
+            f'Found settings docker. API: {API_URL}, REDIS_HOST: {REDIS_HOST}, REDIS_PORT: {REDIS_PORT}')
+    except ImportError:
+        print('Can not find docker settings')
