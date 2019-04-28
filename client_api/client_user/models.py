@@ -348,7 +348,7 @@ class Order(models.Model):
     def get_avg_price(cls, instrument):
         avg_price = cls.objects.filter(instrument=instrument).aggregate(
             models.Avg('price'))
-        return avg_price.get('price__avg', 0)
+        return avg_price.get('price__avg', 0) or 0
 
     @classmethod
     def get_liquidity_rate(cls, instrument):
@@ -363,7 +363,7 @@ class Order(models.Model):
             user__email__contains='bank', instrument=instrument).order_by(
             'user__created_at_dt').last()
         if bank_balance:
-            return bank_balance.amount
+            return float(bank_balance.amount)
         return 0
 
 
@@ -376,13 +376,13 @@ class OrderPriceHistory(models.Model):
 
 class LiquidityHistory(models.Model):
     instrument = models.ForeignKey(Instrument, on_delete=models.DO_NOTHING)
-    value = models.DecimalField(max_digits=8, decimal_places=5)
+    value = models.DecimalField(max_digits=20, decimal_places=5)
     created_at_dt = models.DateTimeField(auto_now_add=True)
     uuid = models.UUIDField()
 
 
 class PlacedAssetsHistory(models.Model):
     instrument = models.ForeignKey(Instrument, on_delete=models.DO_NOTHING)
-    value = models.DecimalField(max_digits=8, decimal_places=5)
+    value = models.DecimalField(max_digits=20, decimal_places=5)
     created_at_dt = models.DateTimeField(auto_now_add=True)
     uuid = models.UUIDField()

@@ -81,10 +81,15 @@ def load_tokens(filename, players, num):
 
 
 def write_stats(url, instrument_id, emulation_uuid):
-    return requests.post(url + 'api/v1/user/stats/', json={
+    logger.pretty_print(
+        'Writing stats for emulation_uuid: {}, instrument_id: {}'.format(
+            emulation_uuid, instrument_id))
+    res = requests.post(url + 'api/v1/user/stats/', json={
         'instrument_id': instrument_id,
         'emulation_uuid': str(emulation_uuid),
     })
+    if res.status_code > 300:
+        logger.pretty_print('Error writing stats', res.text)
 
 
 def delete_orders(url, bank):
@@ -122,10 +127,10 @@ class Person:
         deltareturn = self.targetreturn - self.curreturn
         if deltareturn >= 0:
             buy = buy + (deltareturn) / self.targetreturn * (
-                        1 - self.skipp - self.buyp - self.sellp)
+                    1 - self.skipp - self.buyp - self.sellp)
         else:
             sell = sell - deltareturn / self.curreturn * (
-                        1 - self.skipp - self.buyp - self.sellp)
+                    1 - self.skipp - self.buyp - self.sellp)
         rnd = np.random.uniform()
         if rnd <= buy:
             return self.place_buy(url, deltareturn, assetreturn, inst_id)
@@ -145,11 +150,11 @@ class Person:
                                                              self.maxproportion - self.minproportion),
                                                      0)
         rtrn = assetreturn * (
-                    1 - np.sign(deltareturn) * 0.01 * np.random.exponential(
-                np.abs(deltareturn /
-                       np.maximum(
-                           self.targetreturn,
-                           self.curreturn))))
+                1 - np.sign(deltareturn) * 0.01 * np.random.exponential(
+            np.abs(deltareturn /
+                   np.maximum(
+                       self.targetreturn,
+                       self.curreturn))))
         price = 1 / (1 + rtrn)
         return proportion * self.curassets, rtrn, price
 
@@ -159,11 +164,11 @@ class Person:
                                                          self.curreturn) * \
                                 (self.maxproportion - self.minproportion), 0)
         rtrn = assetreturn * (
-                    1 + np.sign(deltareturn) * 0.01 * np.random.exponential(
-                np.abs(deltareturn /
-                       np.maximum(
-                           self.targetreturn,
-                           self.curreturn))))
+                1 + np.sign(deltareturn) * 0.01 * np.random.exponential(
+            np.abs(deltareturn /
+                   np.maximum(
+                       self.targetreturn,
+                       self.curreturn))))
         price = 1 / (1 + rtrn)
         return (proportion * self.curmoney, rtrn, price)
 
@@ -398,4 +403,5 @@ def run_emulation(emulation_uuid, url='http://client-api.dlbas.me/', days=50,
 
 
 if __name__ == '__main__':
-    run_emulation(uuid.uuid4(), url='http://localhost:8000/', nplaysers=10, meantargetreturn=5, yearreturn=5)
+    run_emulation(uuid.uuid4(), url='http://localhost:8000/', nplaysers=10,
+                  meantargetreturn=5, yearreturn=5)

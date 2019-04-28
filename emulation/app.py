@@ -9,7 +9,7 @@ import redis as _redis
 from flask import Flask, request, Response
 from multiprocessing import Process
 
-from emulation import run_emulation
+from .emulation import run_emulation
 from tokenization import tokenize
 import settings
 
@@ -84,6 +84,7 @@ def emulate():
 
     process = Process(target=run_emulation,
                       kwargs=dict(
+                          url=settings.API_URL,
                           emulation_uuid=emulation_uuid,
                           assets=number_of_token_bags,
                           meanmoney=data.get('meanmoney', 800),
