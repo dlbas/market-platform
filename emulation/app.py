@@ -9,7 +9,7 @@ import redis as _redis
 from flask import Flask, request, Response
 from multiprocessing import Process
 
-from .emulation import run_emulation
+from emulation import run_emulation
 from tokenization import tokenize
 import settings
 
