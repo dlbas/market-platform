@@ -200,7 +200,7 @@ class PricesApiView(views.APIView):
                             status=404)
 
         instrument = get_object_or_404(models.Instrument,
-                                       instrument_id=instrument_id)
+                                       id=instrument_id)
         avg_price = models.Order.get_avg_price(instrument=instrument)
         return Response({'result': avg_price}, status=200)
 
