@@ -1,3 +1,4 @@
+import typing
 from enum import Enum
 import uuid
 import pyotp
@@ -251,12 +252,16 @@ class Order(models.Model):
         return f'[{self.type}|{self.instrument}] @{self.price} ({self.remaining_sum}/{self.total_sum})'
 
     @classmethod
-    def _trade_orders(cls, first, second):
+    def _trade_orders(cls, first: 'Order', second: 'Order') -> (
+            'Order',
+            'Order',
+            InstrumentBalance,
+            InstrumentBalance,
+            FiatBalance,
+            FiatBalance,
+    ):
         """
-
-        :param first:
-        :param second:
-        :return:
+        Internal method that actually trades orders
         """
         # TODO Add fee
         with transaction.atomic():
@@ -310,11 +315,9 @@ class Order(models.Model):
             return first, second, first_balance, second_balance, first_fiat_balance, second_fiat_balance
 
     @classmethod
-    def place_order(cls, order):
+    def place_order(cls, order: 'Order') -> 'Order':
         """
-
-        :param order:
-        :return:
+        Places order into orderbook
         """
         counter_order_type = OrderType.SELL.value if order.type == OrderType.BUY.value else OrderType.BUY.value
         counter_orders = None
@@ -345,20 +348,35 @@ class Order(models.Model):
         return order
 
     @classmethod
-    def get_avg_price(cls, instrument):
+    def get_avg_price(cls, instrument: Instrument) -> float:
+        """
+        Returns average price
+        :param instrument:
+        :return:
+        """
         avg_price = cls.objects.filter(instrument=instrument).aggregate(
             models.Avg('price'))
         return avg_price.get('price__avg', 0) or 0
 
     @classmethod
-    def get_liquidity_rate(cls, instrument):
+    def get_liquidity_rate(cls, instrument: Instrument) -> float:
+        """
+        Returns liquidity rate
+        :param instrument:
+        :return:
+        """
         completed_count = cls.objects.filter(
             status=OrderStatus.COMPLETED.value, instrument=instrument).count()
         total_count = cls.objects.filter(instrument=instrument).count()
         return completed_count / total_count if total_count > 0 else 0
 
     @classmethod
-    def get_placed_assets_rate(cls, instrument):
+    def get_placed_assets_rate(cls, instrument: Instrument) -> float:
+        """
+        Returns number of tokens "bank" user has
+        :param instrument:
+        :return:
+        """
         bank_balance = InstrumentBalance.objects.filter(
             user__email__contains='bank', instrument=instrument).order_by(
             'user__created_at_dt').last()

@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from rest_framework_jwt.views import ObtainJSONWebToken
 from rest_framework_jwt.serializers import JSONWebTokenSerializer
 from rest_framework.mixins import ListModelMixin, UpdateModelMixin
+from django.shortcuts import get_object_or_404
 import django_filters
 
 from client_user import serializers, models
@@ -188,13 +189,28 @@ class InstrumentBalanceApiView(UpdateModelMixin, generics.GenericAPIView):
         return self.update(request, *args, **kwargs)
 
 
+class PricesApiView(views.APIView):
+    permission_classes = (permissions.AllowAny,)
+
+    def get(self, request, *args, **kwargs):
+        instrument_id = self.request.query_params.get('instrument_id')
+        if not instrument_id:
+            return Response({'status': 'error',
+                             'result': 'instrument id was not provided'},
+                            status=404)
+
+        instrument = get_object_or_404(models.Instrument,
+                                       instrument_id=instrument_id)
+        avg_price = models.Order.get_avg_price(instrument=instrument)
+        return Response({'result': avg_price}, status=200)
+
+
 class StatisticsAPIView(views.APIView):
     permission_classes = (permissions.AllowAny,)
 
-    def post(self, request, *args, **kwargs):
+    def post(self, request, *args, **kwargs) -> Response:
         """
         Tell API to write statistics about current emulation round
-        :return:
         """
         instrument_id = self.request.data.get('instrument_id')
         emulation_uuid = self.request.data.get('emulation_uuid')
@@ -223,7 +239,7 @@ class StatisticsAPIView(views.APIView):
 
         return Response({'result': 'ok'}, status=200)
 
-    def get(self, request, *args, **kwargs):
+    def get(self, request, *args, **kwargs) -> Response:
         """
         Retrieve stats about current emulation round
         """
