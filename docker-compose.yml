@@ -53,7 +53,7 @@ services:
   client-api:
     build:
       context: .
-      dockerfile: ./Dockerfile
+      dockerfile: client_api/Dockerfile
     restart: unless-stopped
     expose:
       - 8000
