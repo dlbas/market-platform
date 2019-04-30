@@ -1,18 +1,21 @@
 # Client api image
 FROM python:3.6-slim
 
+WORKDIR .
+
 EXPOSE 5000
 
-
-WORKDIR .
-ENV FLASK_APP app.py
 COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+ENV FLASK_APP app.py
+
 COPY app.py .
 COPY emulation.py .
+COPY tokenization.py .
 COPY settings.py .
 COPY settings_docker.py .
-COPY tokenization.py .
+COPY entrypoint.sh .
 
-RUN pip install -r requirements.txt
-
-ENTRYPOINT ["python", "-m", "flask", "run", "--host", "0.0.0.0"]
+ENTRYPOINT ["./entrypoint.sh"]
+CMD ["run"]
