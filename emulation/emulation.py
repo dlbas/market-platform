@@ -205,6 +205,10 @@ class Person:
 
         self.curreturn = (self.curmoney + self.curassets - self.money[0]) / \
                          self.money[0]
+        price = requests.get(
+            url + 'api/v1/user/price/?instrument_id=' + str(inst_id)).json()[
+            'result']
+        self.targetreturn = (1 - price) / price
 
     def place_buy(self, url, deltareturn, assetreturn, inst_id):
         amount, assetreturn, price = self.buy(deltareturn, assetreturn)
@@ -356,6 +360,16 @@ def emulate(emulation_uuid, url=None, duration=None, yearreturn=None,
         write_stats(url, inst_id, emulation_uuid)
 
 
+def try_instrument(url, bank, inst_id):
+    ins = inst_id
+    if len(requests.get(
+            url + 'api/v1/user/instrument-balance/?instrument_id=' + str(
+                    inst_id),
+            headers={'Authorization': 'JWT ' + bank.token}).json()) == 0:
+        ins = create_new_instrument(url, bank)
+    return ins
+
+
 def run_emulation(emulation_uuid, url='http://client-api.dlbas.me/', days=50,
                   yearreturn=.15, nplaysers=3,
                   meanmoney=100, assets=800,
@@ -383,7 +397,7 @@ def run_emulation(emulation_uuid, url='http://client-api.dlbas.me/', days=50,
             bank = Bank(assets=assets)
             url = url
             bank.get_token(url)
-
+            inst_id = try_instrument(url, bank, inst_id)
             for i in range(num):
                 email = "1bot" + str(i) + "@mail.ru"
                 targetreturn = meantargetreturn * days / 365
