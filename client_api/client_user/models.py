@@ -373,9 +373,10 @@ class Order(models.Model):
         :return:
         """
         completed_volume = cls.objects.filter(
+            instrument=instrument,
                 status=OrderStatus.COMPLETED.value).aggregate(
                 models.Sum('total_sum')).get('total_sum__sum', 0)
-        rate = cls.objects.all().aggregate(
+        rate = cls.objects.filter(instrument=instrument).aggregate(
             rate=completed_volume / models.Sum('total_sum')
         )
         return float(rate.get('rate', 0) or 0)
