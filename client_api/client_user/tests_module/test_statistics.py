@@ -29,6 +29,6 @@ class BaseTestCase(TestCase):
         price = models.Order.get_avg_price(self.instrument)
         bank_balance = models.Order.get_placed_assets_rate(self.instrument)
         liquidity = models.Order.get_liquidity_rate(self.instrument)
-        self.assertEqual(price, 1)
+        self.assertEqual(price, 0)  # because orders are not completed
         self.assertEqual(bank_balance, 500)
         self.assertEqual(liquidity, 0)
