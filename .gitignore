@@ -110,6 +110,9 @@ venv.bak/
 .idea/
 *.http
 
+# apple
+.DS_Store
+
 # local settings
 settings_local.py
 deploy-key
