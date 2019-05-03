@@ -357,7 +357,7 @@ class Order(models.Model):
         """
         avg_price = cls.objects.filter(
             instrument=instrument,
-            status=OrderStatus.COMPLETED.value
+            # status=OrderStatus.COMPLETED.value
         ).annotate(
             price_t_volume=models.F('actual_price') * models.F('total_sum')
         ).aggregate(
