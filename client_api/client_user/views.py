@@ -223,13 +223,24 @@ class StatisticsAPIView(views.APIView):
         else:
             instrument = models.Instrument.objects.get(id=instrument_id)
 
-        avg_price = models.Order.get_avg_price(instrument)
+        orderbook_empty = models.Order.objects.count() == 0
+
+        if not orderbook_empty:
+            avg_price = models.Order.get_avg_price(instrument)
+            models.OrderPriceHistory.objects.create(price=avg_price,
+                                                    instrument=instrument,
+                                                    uuid=emulation_uuid)
+        else:
+            # In case current price is 0 because of empty orderbook
+            last_price = models.OrderPriceHistory.objects.filter(
+                uuid=emulation_uuid, instrument=instrument
+            ).latest('created_at_dt')
+            last_price.pk = None
+            last_price.save()
+
         liquidity_rate = models.Order.get_liquidity_rate(instrument)
         placed_assets_rate = models.Order.get_placed_assets_rate(instrument)
 
-        models.OrderPriceHistory.objects.create(price=avg_price,
-                                                instrument=instrument,
-                                                uuid=emulation_uuid)
         models.LiquidityHistory.objects.create(value=liquidity_rate,
                                                instrument=instrument,
                                                uuid=emulation_uuid)
