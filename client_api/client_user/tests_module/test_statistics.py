@@ -1,8 +1,7 @@
+from decimal import Decimal
 from django.test import TestCase
-
 from client_user import models
 from client_user.tests_module.utils import Fixtures
-
 
 class BaseTestCase(TestCase):
     def setUp(self):
@@ -29,6 +28,24 @@ class BaseTestCase(TestCase):
         price = models.Order.get_avg_price(self.instrument)
         bank_balance = models.Order.get_placed_assets_rate(self.instrument)
         liquidity = models.Order.get_liquidity_rate(self.instrument)
-        self.assertEqual(price, 0)  # because orders are not completed
+        self.assertEqual(price, 1)
         self.assertEqual(bank_balance, 500)
         self.assertEqual(liquidity, 0)
+
+    def test_average_price(self):
+        Fixtures.change_fiat_balance(self.user1, 500)
+        Fixtures.change_fiat_balance(self.user2, 500)
+        order1 = Fixtures.create_order(instrument=self.instrument,
+                                       user=self.user1,
+                                       type=models.OrderType.SELL.value,
+                                       amount=100, price=1)
+        order2 = Fixtures.create_order(instrument=self.instrument,
+                                       user=self.user2,
+                                       type=models.OrderType.BUY.value,
+                                       amount=200, price=Decimal('1'))
+        Fixtures.change_instrument_balance(self.user1, self.instrument, 100)
+        Fixtures.change_instrument_balance(self.bank, self.instrument, 500)
+        _ = models.Order._trade_orders(
+            order1, order2)
+        price = models.Order.get_avg_price(self.instrument)
+        self.assertEqual(price, 1)

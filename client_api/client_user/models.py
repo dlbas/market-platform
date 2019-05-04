@@ -359,7 +359,7 @@ class Order(models.Model):
             instrument=instrument,
             # status=OrderStatus.COMPLETED.value
         ).annotate(
-            price_t_volume=models.F('actual_price') * models.F('total_sum')
+            price_t_volume=models.F('price') * models.F('total_sum')
         ).aggregate(
             avg_price=models.Sum('price_t_volume') / models.Sum('total_sum')
         )
