@@ -223,10 +223,8 @@ class StatisticsAPIView(views.APIView):
         else:
             instrument = models.Instrument.objects.get(id=instrument_id)
 
-        orderbook_empty = models.Order.objects.count() == 0
-
-        if not orderbook_empty:
-            avg_price = models.Order.get_avg_price(instrument)
+        avg_price = models.Order.get_avg_price(instrument)
+        if avg_price != 0:
             models.OrderPriceHistory.objects.create(price=avg_price,
                                                     instrument=instrument,
                                                     uuid=emulation_uuid)
