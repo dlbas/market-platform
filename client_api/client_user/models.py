@@ -10,6 +10,7 @@ from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
 from django.shortcuts import get_object_or_404
 from django.core.exceptions import ObjectDoesNotExist
+from django.db.utils import DataError
 
 from client_api import exceptions
 
@@ -355,14 +356,18 @@ class Order(models.Model):
         :param instrument:
         :return:
         """
-        avg_price = cls.objects.filter(
-            instrument=instrument,
-            # status=OrderStatus.COMPLETED.value
-        ).annotate(
-            price_t_volume=models.F('price') * models.F('total_sum')
-        ).aggregate(
-            avg_price=models.Sum('price_t_volume') / models.Sum('total_sum')
-        )
+        try:
+            avg_price = cls.objects.filter(
+                instrument=instrument,
+                # status=OrderStatus.COMPLETED.value
+            ).annotate(
+                price_t_volume=models.F('price') * models.F('total_sum')
+            ).aggregate(
+                avg_price=models.Sum('price_t_volume') / models.Sum(
+                    'total_sum')
+            )
+        except DataError:  # handle division by zero
+            return 0
         return float(avg_price.get('avg_price', 0) or 0)
 
     @classmethod
