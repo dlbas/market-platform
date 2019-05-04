@@ -4,6 +4,7 @@ import uuid
 import pyotp
 
 from django.db import models, transaction
+from django.db.models import Q
 from django.utils import timezone
 from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
@@ -350,25 +351,35 @@ class Order(models.Model):
     @classmethod
     def get_avg_price(cls, instrument: Instrument) -> float:
         """
-        Returns average price
+        Returns volume weighted price
         :param instrument:
         :return:
         """
-        avg_price = cls.objects.filter(instrument=instrument).aggregate(
-            models.Avg('price'))
-        return avg_price.get('price__avg', 0) or 0
+        avg_price = cls.objects.filter(
+            instrument=instrument,
+            # status=OrderStatus.COMPLETED.value
+        ).annotate(
+            price_t_volume=models.F('price') * models.F('total_sum')
+        ).aggregate(
+            avg_price=models.Sum('price_t_volume') / models.Sum('total_sum')
+        )
+        return float(avg_price.get('avg_price', 0) or 0)
 
     @classmethod
     def get_liquidity_rate(cls, instrument: Instrument) -> float:
         """
-        Returns liquidity rate
+        Returns liquidity rate weighted by order volume
         :param instrument:
         :return:
         """
-        completed_count = cls.objects.filter(
-            status=OrderStatus.COMPLETED.value, instrument=instrument).count()
-        total_count = cls.objects.filter(instrument=instrument).count()
-        return completed_count / total_count if total_count > 0 else 0
+        completed_volume = cls.objects.filter(
+            instrument=instrument,
+                status=OrderStatus.COMPLETED.value).aggregate(
+                models.Sum('total_sum')).get('total_sum__sum', 0)
+        rate = cls.objects.filter(instrument=instrument).aggregate(
+            rate=completed_volume / models.Sum('total_sum')
+        )
+        return float(rate.get('rate', 0) or 0)
 
     @classmethod
     def get_placed_assets_rate(cls, instrument: Instrument) -> float:
