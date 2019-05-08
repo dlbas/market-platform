@@ -208,7 +208,8 @@ class Person:
         price = requests.get(
             url + 'api/v1/user/price/?instrument_id=' + str(inst_id)).json()[
             'result']
-        self.targetreturn = (1 - price) / price
+        if price:
+            self.targetreturn = (1 - price) / price
 
     def place_buy(self, url, deltareturn, assetreturn, inst_id):
         amount, assetreturn, price = self.buy(deltareturn, assetreturn)
