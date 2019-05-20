@@ -66,17 +66,15 @@ def create_dframe(D, PD, LGD, P, DI, I, R, N):
     del credits_dframe['index']
     return credits_dframe
 
-#Здесь непосредственно рассчитываем количество портфелей с токенами, получающихся из данных кредитов
 def create_bags(credits_dframe, tok_in_bag):
     koltokbags = 0
     while len(credits_dframe["N"]) > 0:
-        min_ind = 0
+        credits_dframe = credits_dframe.sort_values('N', ascending = False)
+        credits_dframe = credits_dframe.reset_index()
+        del credits_dframe['index']
+        min_ind = tok_in_bag - 1
         #Ищем кредит из первых k с минимальным количеством токенов
         minim = credits_dframe["N"][min_ind]
-        for i in range(tok_in_bag):
-            if credits_dframe["N"][i] < minim:
-                minim = credits_dframe["N"][i]
-                min_ind = i
         #Отсекаем по минимальному кредиту определенное количество портфелей        
         ob = int(credits_dframe["N"][min_ind])
         credits_dframe["N"][min_ind] = credits_dframe["N"][min_ind] - int(credits_dframe["N"][min_ind])
@@ -92,18 +90,17 @@ def create_bags(credits_dframe, tok_in_bag):
         del credits_dframe['index']
         if len(credits_dframe["N"]) == 0:
             break
-        min_ind = 0
-        minim = credits_dframe["N"][min_ind]
         #повторяем процедуру с нахождением минимума.Если количество оставшихся кредитов меньше k, то есть невозможно составить портфель так,
         #чтобы в портфеле было максимум по одному токену с каждого кредита, то добавляем обязательства банка
         #Таким образом,мы искусственно добавляем еще несколько "кредитов"
         #чтобы их опять стало k и мы могли сделать портфели.Повторяем операцию,пока в нашем датафрейме совсем не останется кредитов.
         if len(credits_dframe["N"]) < tok_in_bag:
-            for i in range(len(credits_dframe["N"])):
-                if credits_dframe["N"][i] < minim:
-                    minim = credits_dframe["N"][i]
-                    min_ind = i
-            while len(credits_dframe["N"]) < tok_in_bag:
+            credits_dframe = credits_dframe.sort_values('N', ascending = False)
+            credits_dframe = credits_dframe.reset_index()
+            del credits_dframe['index']
+            min_ind = len(credits_dframe["N"]) - 1
+            minim = credits_dframe["N"][min_ind]
+            for i in range(tok_in_bag - len(credits_dframe["N"])):
                 #добавление нашего "псевдо" кредита(векселя)
                 new_record = pd.DataFrame([[credits_dframe["D"][min_ind],credits_dframe["PD"][min_ind],
                                             credits_dframe["LGD"][min_ind],credits_dframe["P"][min_ind],
@@ -126,9 +123,10 @@ def tokenize(PD, LGD, credit_value, number_of_credits):
     N = []
     token_division(number_of_credits,creditiki,D, PD, LGD, P, DI, I, R, N)
     credits_dframe = create_dframe(D, PD, LGD, P, DI, I, R, N)
-    k = 2 #количество токенов в портфеле
+    k = 100  #количество токенов в портфеле
     koltokbags = create_bags(credits_dframe, k)#количество портфелей токенов
+    print(koltokbags)
     return koltokbags
 
 if __name__ == '__main__':
-    tokenize(20,10,50,30)
+    tokenize(20,10,50,200)
