@@ -21,12 +21,6 @@ os.path.join(BASE_DIR, '../client_api/')
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/2.1/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = '!42z*(31+fehf3!y(w0oz8(vaeg2j-#^49%&v3(80t5ir%+n2)'
-
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
 ALLOWED_HOSTS = []
 
 # Application definition
@@ -156,16 +150,14 @@ CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
 
-# email
-EMAIL_HOST = 'smtp.yandex.ru'
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'funky.lory@yandex.ru'
-EMAIL_HOST_PASSWORD = 'daniel'
-
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.1/howto/static-files/
 
 STATIC_URL = '/static/'
 
 API_URL = 'http://localhost:8000'
+
+try:
+    from .settings_local import *
+except ImportError:
+    pass

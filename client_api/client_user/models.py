@@ -1,4 +1,3 @@
-import typing
 import uuid
 from enum import Enum
 
@@ -7,12 +6,8 @@ from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models, transaction
-from django.db.models import Q
 from django.db.utils import DataError
-from django.shortcuts import get_object_or_404
 from django.utils import timezone
-
-from client_api import exceptions
 
 
 def generate_referral_code(length):
@@ -87,21 +82,6 @@ class ClientUser(AbstractBaseUser):
 
     USERNAME_FIELD = 'email'
 
-    @classmethod
-    def activate(cls, code):
-        user = get_object_or_404(cls, email_verification_code=code)
-
-        if not user.is_email_verified and str(
-                user.email_verification_code) == code:
-            user.is_email_verified = True
-            user.email_verified_at_dt = timezone.now()
-            user.save(update_fields=[
-                'is_email_verified',
-                'email_verified_at_dt',
-            ])
-        else:
-            raise exceptions.ActivationError
-
     @property
     def is_staff(self):
         return self.is_superuser
@@ -137,27 +117,6 @@ class ClientUser(AbstractBaseUser):
     def assign_instrument_balance(self):
         for instrument in Instrument.objects.all():
             InstrumentBalance.objects.create(instrument=instrument, user=self)
-
-
-class ClientUserIp(models.Model):
-    user = models.ForeignKey(ClientUser,
-                             blank=False,
-                             null=False,
-                             on_delete=models.CASCADE,
-                             related_name='user_ips')
-    ip_address = models.GenericIPAddressField(null=False, blank=False)
-    user_agent = models.TextField(null=True, blank=True)
-    is_approved = models.BooleanField(default=True)
-    created_at_dt = models.DateTimeField(auto_now_add=True)
-    updated_at_dt = models.DateTimeField(auto_now=True)
-
-
-class Operations(Enum):
-    deposit = "deposit"
-    withdrawal = "withdrawal"
-    reward = "reward"
-    referral = "referral"
-    commission = "commission"
 
 
 class InstrumentBalance(models.Model):
