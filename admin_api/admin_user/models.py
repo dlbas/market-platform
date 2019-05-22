@@ -1,9 +1,8 @@
 import logging
 
-from django.db import models, transaction
 from django.contrib.auth import authenticate
-from django.contrib.auth.models import BaseUserManager, AbstractBaseUser
-
+from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
+from django.db import models, transaction
 from rest_framework.authtoken.models import Token
 
 logger = logging.getLogger('admin models')
@@ -35,7 +34,10 @@ class AdminUser(AbstractBaseUser):
     # TODO no need for now
     # secret_key = models.CharField(max_length=32, null=True, blank=True)
     register_date = models.DateTimeField(auto_now=True)
-    last_login = models.DateField(auto_now=False, auto_now_add=False, null=True, blank=True)
+    last_login = models.DateField(auto_now=False,
+                                  auto_now_add=False,
+                                  null=True,
+                                  blank=True)
     is_active = models.BooleanField(default=True)
     is_admin = models.BooleanField(default=False)
     objects = AdminUserManager()

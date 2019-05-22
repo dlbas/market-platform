@@ -1,15 +1,16 @@
-from rest_framework import generics, permissions, status, views, viewsets
-from rest_framework.response import Response
-from rest_framework_jwt.views import ObtainJSONWebToken
-from rest_framework_jwt.serializers import JSONWebTokenSerializer
-from rest_framework.mixins import ListModelMixin, UpdateModelMixin
-from django.shortcuts import get_object_or_404
-import django_filters
-
-from client_user import serializers, models
-from .filters import InstrumentBalanceFilter, FiatBalanceFilter
-
 import logging
+
+import django_filters
+from django.shortcuts import get_object_or_404
+from rest_framework import generics, permissions, status, views, viewsets
+from rest_framework.mixins import ListModelMixin, UpdateModelMixin
+from rest_framework.response import Response
+from rest_framework_jwt.serializers import JSONWebTokenSerializer
+from rest_framework_jwt.views import ObtainJSONWebToken
+
+from client_user import models, serializers
+
+from .filters import FiatBalanceFilter, InstrumentBalanceFilter
 
 logger = logging.getLogger('django.views')
 
@@ -76,7 +77,6 @@ class EmailVerificationAPIView(generics.GenericAPIView):
 #             }, status=status.HTTP_200_OK)
 #         raise exceptions.InvalidRequest
 
-
 # class RestorePasswordAPIView(generics.GenericAPIView):
 #     permission_classes = [permissions.AllowAny]
 #     serializer_class = serializers.RestorePasswordSerializer
@@ -86,7 +86,6 @@ class EmailVerificationAPIView(generics.GenericAPIView):
 #         serializer.is_valid(raise_exception=True)
 #         user = serializer.restore_password(request)
 #         return Response({'email': user.email}, status=status.HTTP_200_OK)
-
 
 # class RequestRestorePasswordAPIView(generics.GenericAPIView):
 #     permission_classes = [permissions.AllowAny]
@@ -98,7 +97,6 @@ class EmailVerificationAPIView(generics.GenericAPIView):
 #         serializer.save(request)
 #         return Response(status=status.HTTP_200_OK)
 
-
 # class CheckRestorePasswordAPIView(generics.GenericAPIView):
 #     permission_classes = [permissions.AllowAny]
 #     serializer_class = serializers.CheckRestorePasswordSerializer
@@ -108,7 +106,6 @@ class EmailVerificationAPIView(generics.GenericAPIView):
 #         serializer.is_valid(raise_exception=True)
 #         serializer.check(request)
 #         return Response(status=status.HTTP_200_OK)
-
 
 # class InviteUserAPIView(generics.GenericAPIView):
 #     permission_classes = [permissions.IsAuthenticated]
@@ -131,14 +128,14 @@ class UserInfoAPIView(generics.RetrieveAPIView):
 
 class InstrumentsViewSet(viewsets.ModelViewSet):
     serializer_class = serializers.InstrumentSerializer
-    permission_classes = (permissions.IsAuthenticated,)
+    permission_classes = (permissions.IsAuthenticated, )
     queryset = models.Instrument.objects.all()
     lookup_field = 'id'
 
 
 class OrdersViewSet(viewsets.ModelViewSet):
     serializer_class = serializers.OrderSerializer
-    permission_classes = (permissions.IsAuthenticated,)
+    permission_classes = (permissions.IsAuthenticated, )
     lookup_field = 'id'
 
     def get_queryset(self):
@@ -157,7 +154,7 @@ class OrdersViewSet(viewsets.ModelViewSet):
 
 class FiatBalanceApiView(UpdateModelMixin, generics.GenericAPIView):
     serializer_class = serializers.FiatBalanceSerializer
-    permission_classes = (permissions.IsAuthenticated,)
+    permission_classes = (permissions.IsAuthenticated, )
     lookup_field = 'id'
 
     def get_object(self):
@@ -172,8 +169,8 @@ class FiatBalanceApiView(UpdateModelMixin, generics.GenericAPIView):
 
 class InstrumentBalanceApiView(UpdateModelMixin, generics.GenericAPIView):
     serializer_class = serializers.InstrumentBalanceSerializer
-    permission_classes = (permissions.IsAuthenticated,)
-    filter_backends = (django_filters.rest_framework.DjangoFilterBackend,)
+    permission_classes = (permissions.IsAuthenticated, )
+    filter_backends = (django_filters.rest_framework.DjangoFilterBackend, )
     filter_class = InstrumentBalanceFilter
     lookup_field = 'id'
 
@@ -190,23 +187,25 @@ class InstrumentBalanceApiView(UpdateModelMixin, generics.GenericAPIView):
 
 
 class PricesApiView(views.APIView):
-    permission_classes = (permissions.AllowAny,)
+    permission_classes = (permissions.AllowAny, )
 
     def get(self, request, *args, **kwargs):
         instrument_id = self.request.query_params.get('instrument_id')
         if not instrument_id:
-            return Response({'status': 'error',
-                             'result': 'instrument id was not provided'},
-                            status=404)
+            return Response(
+                {
+                    'status': 'error',
+                    'result': 'instrument id was not provided'
+                },
+                status=404)
 
-        instrument = get_object_or_404(models.Instrument,
-                                       id=instrument_id)
+        instrument = get_object_or_404(models.Instrument, id=instrument_id)
         avg_price = models.Order.get_avg_price(instrument=instrument)
         return Response({'result': avg_price}, status=200)
 
 
 class StatisticsAPIView(views.APIView):
-    permission_classes = (permissions.AllowAny,)
+    permission_classes = (permissions.AllowAny, )
 
     def post(self, request, *args, **kwargs) -> Response:
         """
@@ -231,8 +230,8 @@ class StatisticsAPIView(views.APIView):
         else:
             # In case current price is 0 because of empty orderbook
             last_price = models.OrderPriceHistory.objects.filter(
-                uuid=emulation_uuid, instrument=instrument
-            ).latest('created_at_dt')
+                uuid=emulation_uuid,
+                instrument=instrument).latest('created_at_dt')
             last_price.pk = None
             last_price.save()
 
@@ -256,20 +255,20 @@ class StatisticsAPIView(views.APIView):
         if not uuid:
             return Response({'result': 'uuid was not provided'}, status=400)
         price_stats = serializers.OrderPriceHistorySerializer(
-            models.OrderPriceHistory.objects.filter(uuid=uuid),
-            many=True)
+            models.OrderPriceHistory.objects.filter(uuid=uuid), many=True)
         liquidity_stats = serializers.LiquidityRateSerializer(
-            models.LiquidityHistory.objects.filter(uuid=uuid),
-            many=True)
+            models.LiquidityHistory.objects.filter(uuid=uuid), many=True)
         placement_stats = serializers.PlacementRateSerializer(
-            models.PlacedAssetsHistory.objects.filter(uuid=uuid),
-            many=True)
-        return Response({
-            'result': {
-                'price_stats': [v.get('price', 0) for v in price_stats.data],
-                'liquidity_stats': [v.get('value', 0) for v in
-                                    liquidity_stats.data],
-                'placement_stats': [v.get('value', 0) for v in
-                                    placement_stats.data],
-            }
-        }, status=200)
+            models.PlacedAssetsHistory.objects.filter(uuid=uuid), many=True)
+        return Response(
+            {
+                'result': {
+                    'price_stats':
+                    [v.get('price', 0) for v in price_stats.data],
+                    'liquidity_stats':
+                    [v.get('value', 0) for v in liquidity_stats.data],
+                    'placement_stats':
+                    [v.get('value', 0) for v in placement_stats.data],
+                }
+            },
+            status=200)

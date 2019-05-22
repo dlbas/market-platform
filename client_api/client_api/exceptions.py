@@ -84,7 +84,8 @@ class CountryIsBlocked(APIException):
 
 class CountryIsUndefined(APIException):
     status_code = 500
-    default_detail = _('This country is undefined. Ask meneger to continue registration.')
+    default_detail = _(
+        'This country is undefined. Ask meneger to continue registration.')
     default_code = 'country_undefined'
 
 
@@ -132,7 +133,8 @@ class OrderIsFailed(APIException):
 
 class FromCardNotAllowed(APIException):
     status_code = 400
-    default_detail = _('Only authenticated users may use exchange from balance.')
+    default_detail = _(
+        'Only authenticated users may use exchange from balance.')
     default_code = 'from_card_not_allowed'
 
 
@@ -150,13 +152,15 @@ class SchemaNotValid(APIException):
 
 class WithdrawalLimitExceeded(APIException):
     status_code = 400
-    default_detail = _('Withdrawal limit exceeded. Please pass account verification')
+    default_detail = _(
+        'Withdrawal limit exceeded. Please pass account verification')
     default_code = 'withdrawal_limit_exceeded'
 
 
 class DepositLimitExceeded(APIException):
     status_code = 400
-    default_detail = _('Deposit limit exceeded. Please pass account verification')
+    default_detail = _(
+        'Deposit limit exceeded. Please pass account verification')
     default_code = 'deposit_limit_exceeded'
 
 
@@ -241,10 +245,12 @@ class ActivationError(APIException):
     default_detail = _('The code is wrong, or user already activated.')
     default_code = 'activation_error'
 
+
 class UsedKey(APIException):
     status_code = 400
     default_detail = _('The code already was used.')
     default_code = 'used_key'
+
 
 class ExpiredKey(APIException):
     status_code = 400
@@ -256,6 +262,7 @@ class TemplateDoesNotExist(APIException):
     status_code = 400
     default_detail = _('Requested template does not exist')
     default_code = 'template_doesnt_exist'
+
 
 # Exceptions from core to api
 

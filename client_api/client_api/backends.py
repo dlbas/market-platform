@@ -3,7 +3,6 @@ import logging
 from rest_framework import exceptions
 from rest_framework_jwt.authentication import JSONWebTokenAuthentication
 
-
 logger = logging.getLogger('django.views')
 
 
@@ -33,7 +32,7 @@ class JWTWithTotpAuthentication(JWTWithNoTotpAuthentication):
             return None
 
         # if user.is_two_factor_enabled:
-            # two_factor_code = request.data.get('two_factor_code')
-            # if not is_two_factor_valid(two_factor_code, user):
-            #     raise TwoFactorFailed
+        # two_factor_code = request.data.get('two_factor_code')
+        # if not is_two_factor_valid(two_factor_code, user):
+        #     raise TwoFactorFailed
         return user, jwt_token

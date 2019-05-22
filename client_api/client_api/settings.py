@@ -10,8 +10,8 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/2.1/ref/settings/
 """
 
-import os
 import datetime
+import os
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -30,36 +30,27 @@ ALLOWED_HOSTS = ['*']
 # Application definition
 
 INSTALLED_APPS = [
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
-    'rest_framework',
-    'rest_framework_jwt',
-    'django_filters',
-    'client_user',
-    'django_celery_beat',
-    'django_celery_results'
+    'django.contrib.admin', 'django.contrib.auth',
+    'django.contrib.contenttypes', 'django.contrib.sessions',
+    'django.contrib.messages', 'django.contrib.staticfiles', 'rest_framework',
+    'rest_framework_jwt', 'django_filters', 'client_user',
+    'django_celery_beat', 'django_celery_results'
 ]
 
 REST_FRAMEWORK = {
-    'DEFAULT_PERMISSION_CLASSES': (
-        'rest_framework.permissions.IsAuthenticated',
-    ),
+    'DEFAULT_PERMISSION_CLASSES':
+    ('rest_framework.permissions.IsAuthenticated', ),
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_jwt.authentication.JSONWebTokenAuthentication',
         'rest_framework.authentication.SessionAuthentication',
         'rest_framework.authentication.BasicAuthentication',
     ),
-    'DEFAULT_PARSER_CLASSES': (
-        'rest_framework.parsers.JSONParser',
-    ),
+    'DEFAULT_PARSER_CLASSES': ('rest_framework.parsers.JSONParser', ),
     # 'DEFAULT_PAGINATION_CLASS': 'back_api.paginator.FastCountPagination',
     # 'PAGE_SIZE': 10,
     # 'EXCEPTION_HANDLER': 'client_user.backends.exception_handler_sentry',
-    'COERCE_DECIMAL_TO_STRING': False
+    'COERCE_DECIMAL_TO_STRING':
+    False
 }
 
 MIDDLEWARE = [
@@ -114,16 +105,20 @@ DATABASES = {
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+        'NAME':
+        'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        'NAME':
+        'django.contrib.auth.password_validation.MinimumLengthValidator',
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+        'NAME':
+        'django.contrib.auth.password_validation.CommonPasswordValidator',
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+        'NAME':
+        'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
 ]
 
@@ -183,8 +178,8 @@ if os.environ.get('DOCKER'):
     except ImportError:
         print('Can not find docker settings')
 
-print(
-    "Admin settings were loaded. Chosen database: {}. Host {}. Port: {}".format(
-        DATABASES.get('default').get('NAME'),
-        DATABASES.get('default').get('HOST'),
-        DATABASES.get('default').get('PORT')))
+print("Admin settings were loaded. Chosen database: {}. Host {}. Port: {}".
+      format(
+          DATABASES.get('default').get('NAME'),
+          DATABASES.get('default').get('HOST'),
+          DATABASES.get('default').get('PORT')))
