@@ -1,9 +1,8 @@
-from django.conf.urls import url, include
+from django.conf.urls import include, url
 from rest_framework.routers import DefaultRouter
-
 from rest_framework_jwt.views import ObtainJSONWebToken
 
-from .views import InstrumentViewSet, OrdersViewSet, AdminUserView
+from .views import AdminUserView, InstrumentViewSet, OrdersViewSet
 
 router = DefaultRouter()
 router.register(r'instruments', InstrumentViewSet)

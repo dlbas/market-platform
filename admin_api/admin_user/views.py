@@ -1,13 +1,13 @@
-from rest_framework import viewsets, generics, permissions, response
+from rest_framework import generics, permissions, response, viewsets
 
-from . import models
-from . import serializers
 from client_user import models as client_models
 from client_user import serializers as client_serializers
 
+from . import models, serializers
+
 
 class AdminUserView(generics.RetrieveAPIView):
-    permission_classes = (permissions.IsAdminUser,)
+    permission_classes = (permissions.IsAdminUser, )
     queryset = models.AdminUser.objects.all()
     serializer_class = serializers.AdminUserSerializer
 
@@ -20,10 +20,10 @@ class AdminUserView(generics.RetrieveAPIView):
 class InstrumentViewSet(viewsets.ModelViewSet):
     queryset = client_models.Instrument.objects.all()
     serializer_class = client_serializers.InstrumentSerializer
-    permission_classes = (permissions.IsAdminUser,)
+    permission_classes = (permissions.IsAdminUser, )
 
 
 class OrdersViewSet(viewsets.ModelViewSet):
     queryset = client_models.Order.objects.all()
     serializer_class = client_serializers.OrderSerializer
-    permission_classes = (permissions.IsAdminUser,)
+    permission_classes = (permissions.IsAdminUser, )

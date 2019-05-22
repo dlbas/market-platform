@@ -1,17 +1,13 @@
-import typing
-from enum import Enum
 import uuid
-import pyotp
+from enum import Enum
 
-from django.db import models, transaction
-from django.db.models import Q
-from django.utils import timezone
+import pyotp
 from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
-from django.shortcuts import get_object_or_404
 from django.core.exceptions import ObjectDoesNotExist
-
-from client_api import exceptions
+from django.db import models, transaction
+from django.db.utils import DataError
+from django.utils import timezone
 
 
 def generate_referral_code(length):
@@ -64,8 +60,8 @@ class ClientUser(AbstractBaseUser):
     first_name = models.CharField(max_length=30, blank=True)
     last_name = models.CharField(max_length=30, blank=True)
     status = models.CharField(max_length=128,
-                              choices=[(tag.name, tag.value) for tag in
-                                       ClientUserStatus],
+                              choices=[(tag.name, tag.value)
+                                       for tag in ClientUserStatus],
                               default=ClientUserStatus.UNVERIFIED.value)
     is_active = models.BooleanField(default=True)
     password_changed_at_dt = models.DateTimeField(default=timezone.now)
@@ -86,21 +82,6 @@ class ClientUser(AbstractBaseUser):
 
     USERNAME_FIELD = 'email'
 
-    @classmethod
-    def activate(cls, code):
-        user = get_object_or_404(cls, email_verification_code=code)
-
-        if not user.is_email_verified and str(
-                user.email_verification_code) == code:
-            user.is_email_verified = True
-            user.email_verified_at_dt = timezone.now()
-            user.save(update_fields=[
-                'is_email_verified',
-                'email_verified_at_dt',
-            ])
-        else:
-            raise exceptions.ActivationError
-
     @property
     def is_staff(self):
         return self.is_superuser
@@ -118,8 +99,8 @@ class ClientUser(AbstractBaseUser):
     def get_two_factor_qr_url(self):
         if not self.totp_token:
             self.generate_totp_token()
-        qr_url = pyotp.totp.TOTP(self.totp_token).provisioning_uri(self.email,
-                                                                   issuer_name=settings.TWO_FACTOR_ISSUER)
+        qr_url = pyotp.totp.TOTP(self.totp_token).provisioning_uri(
+            self.email, issuer_name=settings.TWO_FACTOR_ISSUER)
         return qr_url
 
     def generate_totp_token(self):
@@ -136,24 +117,6 @@ class ClientUser(AbstractBaseUser):
     def assign_instrument_balance(self):
         for instrument in Instrument.objects.all():
             InstrumentBalance.objects.create(instrument=instrument, user=self)
-
-
-class ClientUserIp(models.Model):
-    user = models.ForeignKey(ClientUser, blank=False, null=False,
-                             on_delete=models.CASCADE, related_name='user_ips')
-    ip_address = models.GenericIPAddressField(null=False, blank=False)
-    user_agent = models.TextField(null=True, blank=True)
-    is_approved = models.BooleanField(default=True)
-    created_at_dt = models.DateTimeField(auto_now_add=True)
-    updated_at_dt = models.DateTimeField(auto_now=True)
-
-
-class Operations(Enum):
-    deposit = "deposit"
-    withdrawal = "withdrawal"
-    reward = "reward"
-    referral = "referral"
-    commission = "commission"
 
 
 class InstrumentBalance(models.Model):
@@ -184,8 +147,8 @@ class Instrument(models.Model):
     # TODO Create instrument balance for every user when instrument is created
     name = models.CharField(max_length=50)
     status = models.CharField(max_length=30,
-                              choices=[(tag.name, tag.value) for tag in
-                                       InstrumentStatus],
+                              choices=[(tag.name, tag.value)
+                                       for tag in InstrumentStatus],
                               default=InstrumentStatus.ACTIVE.value)
     # these ones for underlying credit
     credit_created_at_d = models.DateField(null=True)
@@ -197,7 +160,10 @@ class Instrument(models.Model):
     created_at_dt = models.DateTimeField(auto_now_add=True)
     updated_at_dt = models.DateTimeField(auto_now=True)
 
-    def save(self, force_insert=False, force_update=False, using=None,
+    def save(self,
+             force_insert=False,
+             force_update=False,
+             using=None,
              update_fields=None):
         if not self.pk:
             super().save(force_insert, force_update, using, update_fields)
@@ -207,10 +173,13 @@ class Instrument(models.Model):
 
     def assign_balances(self, instrument_id):
         for user in ClientUser.objects.all():
-            InstrumentBalance.objects.get_or_create(user=user,
-                                                    instrument_id=instrument_id,
-                                                    defaults={'user': user,
-                                                              'instrument_id': instrument_id})
+            InstrumentBalance.objects.get_or_create(
+                user=user,
+                instrument_id=instrument_id,
+                defaults={
+                    'user': user,
+                    'instrument_id': instrument_id
+                })
 
     def __str__(self):
         return self.name
@@ -229,19 +198,22 @@ class OrderStatus(Enum):
 
 class Order(models.Model):
     type = models.CharField(max_length=15,
-                            choices=[(tag.name, tag.value) for tag in
-                                     OrderType])
+                            choices=[(tag.name, tag.value)
+                                     for tag in OrderType])
     status = models.CharField(max_length=30,
-                              choices=[(tag.name, tag.value) for tag in
-                                       OrderStatus],
+                              choices=[(tag.name, tag.value)
+                                       for tag in OrderStatus],
                               default=OrderStatus.ACTIVE.value)
     price = models.DecimalField(max_digits=20, decimal_places=8)
-    actual_price = models.DecimalField(max_digits=20, decimal_places=8,
+    actual_price = models.DecimalField(max_digits=20,
+                                       decimal_places=8,
                                        null=True)
-    instrument = models.ForeignKey(Instrument, on_delete=models.PROTECT,
+    instrument = models.ForeignKey(Instrument,
+                                   on_delete=models.PROTECT,
                                    related_name='instrument')
     total_sum = models.DecimalField(max_digits=20, decimal_places=8, default=0)
-    remaining_sum = models.DecimalField(max_digits=20, decimal_places=8,
+    remaining_sum = models.DecimalField(max_digits=20,
+                                        decimal_places=8,
                                         default=0)
     created_at_dt = models.DateTimeField(auto_now_add=True)
     updated_at_dt = models.DateTimeField(auto_now=True)
@@ -268,11 +240,9 @@ class Order(models.Model):
         with transaction.atomic():
             trade_amount = min(first.remaining_sum, second.remaining_sum)
             first_balance = InstrumentBalance.objects.select_for_update().get(
-                user=first.user,
-                instrument=first.instrument)
+                user=first.user, instrument=first.instrument)
             second_balance = InstrumentBalance.objects.select_for_update().get(
-                user=second.user,
-                instrument=first.instrument)
+                user=second.user, instrument=first.instrument)
             first_fiat_balance = FiatBalance.objects.select_for_update().get(
                 user=first.user)
             second_fiat_balance = FiatBalance.objects.select_for_update().get(
@@ -325,21 +295,21 @@ class Order(models.Model):
         with transaction.atomic():
             if counter_order_type == OrderType.SELL.value:
                 counter_orders = cls.objects.select_for_update().filter(
-                    type=counter_order_type, instrument=order.instrument,
-                    price__lte=order.price
-                ).order_by('price', 'created_at_dt')
+                    type=counter_order_type,
+                    instrument=order.instrument,
+                    price__lte=order.price).order_by('price', 'created_at_dt')
             elif counter_order_type == OrderType.BUY.value:
                 counter_orders = cls.objects.select_for_update().filter(
-                    type=counter_order_type, instrument=order.instrument,
-                    price__gte=order.price
-                ).order_by('-price', 'created_at_dt')
+                    type=counter_order_type,
+                    instrument=order.instrument,
+                    price__gte=order.price).order_by('-price', 'created_at_dt')
             if not counter_orders:
                 # place order into the order book
                 order.save()
                 return order
             for counter_order in counter_orders:
-                order, counter_order, *balances = cls._trade_orders(order,
-                                                                    counter_order)
+                order, counter_order, *balances = cls._trade_orders(
+                    order, counter_order)
                 order.save()
                 counter_order.save()
                 for balance in balances:
@@ -355,14 +325,16 @@ class Order(models.Model):
         :param instrument:
         :return:
         """
-        avg_price = cls.objects.filter(
-            instrument=instrument,
-            # status=OrderStatus.COMPLETED.value
-        ).annotate(
-            price_t_volume=models.F('price') * models.F('total_sum')
-        ).aggregate(
-            avg_price=models.Sum('price_t_volume') / models.Sum('total_sum')
-        )
+        try:
+            avg_price = cls.objects.filter(
+                instrument=instrument,
+                # status=OrderStatus.COMPLETED.value
+            ).annotate(price_t_volume=models.F('price') *
+                       models.F('total_sum')).aggregate(
+                           avg_price=models.Sum('price_t_volume') /
+                           models.Sum('total_sum'))
+        except DataError:  # handle division by zero
+            return 0
         return float(avg_price.get('avg_price', 0) or 0)
 
     @classmethod
@@ -374,11 +346,10 @@ class Order(models.Model):
         """
         completed_volume = cls.objects.filter(
             instrument=instrument,
-                status=OrderStatus.COMPLETED.value).aggregate(
+            status=OrderStatus.COMPLETED.value).aggregate(
                 models.Sum('total_sum')).get('total_sum__sum', 0)
         rate = cls.objects.filter(instrument=instrument).aggregate(
-            rate=completed_volume / models.Sum('total_sum')
-        )
+            rate=completed_volume / models.Sum('total_sum'))
         return float(rate.get('rate', 0) or 0)
 
     @classmethod
@@ -389,8 +360,8 @@ class Order(models.Model):
         :return:
         """
         bank_balance = InstrumentBalance.objects.filter(
-            user__email__contains='bank', instrument=instrument).order_by(
-            'user__created_at_dt').last()
+            user__email__contains='bank',
+            instrument=instrument).order_by('user__created_at_dt').last()
         if bank_balance:
             return float(bank_balance.amount)
         return 0

@@ -6,7 +6,8 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('client_user', '0003_liquidityhistory_orderpricehistory_placedassetshistory'),
+        ('client_user',
+         '0003_liquidityhistory_orderpricehistory_placedassetshistory'),
     ]
 
     operations = [

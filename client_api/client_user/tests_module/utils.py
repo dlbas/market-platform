@@ -1,5 +1,5 @@
-from itertools import count
 from datetime import timedelta
+from itertools import count
 
 from client_user import models
 
@@ -28,7 +28,8 @@ class Fixtures:
         Create instrument and set balances for every user
         :return:
         """
-        instrument = models.Instrument.objects.create(name=next(cls.instrument_name_generator))
+        instrument = models.Instrument.objects.create(
+            name=next(cls.instrument_name_generator))
         users = models.ClientUser.objects.filter()
         # for user in users:
         #     models.InstrumentBalance.objects.create(instrument=instrument, user=user)
@@ -36,7 +37,8 @@ class Fixtures:
 
     @classmethod
     def change_instrument_balance(cls, user, instrument, value):
-        balance = models.InstrumentBalance.objects.get(user=user, instrument=instrument)
+        balance = models.InstrumentBalance.objects.get(user=user,
+                                                       instrument=instrument)
         balance.amount += value
         balance.save()
         return balance
@@ -50,5 +52,11 @@ class Fixtures:
 
     @classmethod
     def create_order(cls, user, instrument, type, amount, price):
-        return models.Order.objects.create(user=user, instrument=instrument, type=type, total_sum=amount, remaining_sum=amount,
-                                           price=price, expires_in=timedelta(days=1).total_seconds())
+        return models.Order.objects.create(
+            user=user,
+            instrument=instrument,
+            type=type,
+            total_sum=amount,
+            remaining_sum=amount,
+            price=price,
+            expires_in=timedelta(days=1).total_seconds())

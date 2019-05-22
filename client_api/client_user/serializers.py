@@ -1,19 +1,16 @@
 from django.conf import settings
-from rest_framework import serializers
-from django.utils.timezone import now
 from django.contrib.auth.password_validation import validate_password
-from client_user import models
-from django.core.exceptions import ValidationError
-from rest_framework_jwt.serializers import JSONWebTokenSerializer
+from rest_framework import serializers
 
-from client_api import exceptions, celery as celery_tasks
+from client_api import celery as celery_tasks
+from client_user import models
 
 
 class ClientUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.ClientUser
-        fields = ('email', 'first_name', 'last_name', 'created_at_dt', 'language', 'id', 'password',
-                  'country')
+        fields = ('email', 'first_name', 'last_name', 'created_at_dt',
+                  'language', 'id', 'password', 'country')
 
     def validate_password(self, password):
         validate_password(password)
@@ -21,151 +18,13 @@ class ClientUserSerializer(serializers.ModelSerializer):
 
     def save(self, request, *args, **kwargs):
         user = models.ClientUser.objects.create_user(**self.validated_data)
-        link = settings.API_URL + '/api/user/verify-email/?code=' + str(user.email_verification_code)
+        link = settings.API_URL + '/api/user/verify-email/?code=' + str(
+            user.email_verification_code)
 
         celery_tasks.send_django_emails_task.delay(
             emails=[user.email],
-            subject='Подтверди регистрацию, епта',
-            body=f'Тыкай: {link}'
-        )
-
-
-class EmailVerificationSerializer(serializers.Serializer):
-    code = serializers.UUIDField()
-
-    def activate_user(self):
-        models.ClientUser.activate(code=self.validated_data['code'])
-
-
-class ChangePasswordSerializer(serializers.Serializer):
-    old_password = serializers.CharField(required=True)
-    new_password = serializers.CharField(required=True)
-
-    def validate_new_password(self, value):
-        try:
-            validate_password(value)
-            return value
-        except ValidationError as e:
-            raise exceptions.InvalidPassword(e)
-
-
-class JWTWithTotpSerializer(JSONWebTokenSerializer):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        # self.fields['two_factor_code'] = serializers.CharField(required=False)
-
-    def get_ip_addr(self, request):
-        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-        if x_forwarded_for:
-            ip_addr = x_forwarded_for.split(',')[0]
-        else:
-            ip_addr = request.META.get('REMOTE_ADDR')
-        return ip_addr
-
-    def get_user_agent(self, request):
-        return request.META.get('HTTP_USER_AGENT', '')
-
-    def send_mail(self, user, ip, subject, template):
-        celery_tasks.send_django_emails_task.delay(
-            emails=[user.email],
-            subject=subject,
-            body=f'Authorized on ip: {ip}',
-        )
-
-    def validate(self, attrs):
-        try:
-            data = super().validate(attrs)
-        except serializers.ValidationError as exc:
-            raise exc
-
-        user = data['user']
-
-        request = self.context['request']
-
-        if not user.is_email_verified:
-            # TODO: Send email if email is not verified
-            # email_template = EmailTemplate.objects.get(template_type=EmailTemplateTypes.registration.value)
-            link = settings.URL_CUSTOMER_UI + '/auth/confirm?code=' + str(user.email_verification_code)
-
-            celery_tasks.send_django_emails_task.delay(
-                emails=[user.email],
-                subject='Registration confirmation.',
-                body=f'Auth link: {link}',
-            )
-            raise exceptions.EmailNotConfirmed
-
-        user_ip_info, is_created = models.ClientUserIp.objects.update_or_create(user=user,
-                                                                                ip_address=self.get_ip_addr(request))
-        user_ip_info.user_agent = self.get_user_agent(request)
-        user_ip_info.save()
-
-        # if user.ip and is_created:
-        #     self.send_mail(user, self.get_ip_addr(request),
-        #                    'You have been logged in with new IP', EmailTemplateTypes.login_new_ip.value)
-
-        user.ip = self.get_ip_addr(request)
-        user.last_login = now()
-        user.save()
-
-        # user_logs.write_auth_log(
-        #     request=request,
-        #     user=user,
-        # )
-        return data
-
-
-# class RequestRestorePasswordSerializer(serializers.Serializer):
-#     email = serializers.CharField(required=True)
-
-#     def save(self, request, **kwargs):
-#         email = self.validated_data['email']
-#         ip = user_logs.get_user_ip(request)
-#         user_agent = user_logs.get_user_agent(request)
-#         token = models.RestorePasswordToken._create(email,
-#                                                     user_logs.get_user_ip(request),
-#                                                     user_logs.get_cf_country(request),
-#                                                     user_logs.get_user_agent(request))
-
-#         user = models.ClientUser.objects.get(email=email)
-
-#         # send email
-#         email_template = EmailTemplate.objects.get(template_type=EmailTemplateTypes.restore_password.value)
-#         link = settings.URL_CUSTOMER_UI + '/restore-password?code=' + str(token.key)
-
-#         send_email_task.delay(emails=[email],
-#                               subject='Restore password.',
-#                               html=email_template.get_html(user.language).replace("#marker_link", link).replace("#marker_ip", ip).replace("#marker_user_agent",user_agent))
-
-
-# class CheckRestorePasswordSerializer(serializers.Serializer):
-#     code = serializers.UUIDField()
-
-#     def check(self, request, **kwargs):
-#         code = self.validated_data['code']
-#         models.RestorePasswordToken.check_is_valid(code)
-
-
-# class RestorePasswordSerializer(serializers.Serializer):
-#     code = serializers.UUIDField()
-#     new_password = serializers.CharField(required=True)
-
-#     def validate_new_password(self, value):
-#         try:
-#             validate_password(value)
-#             return value
-#         except ValidationError as e:
-#             raise exceptions.ChangePasswordInvalidPassword(e)
-
-#     def restore_password(self, request, **kwargs):
-#         code = self.validated_data['code']
-#         new_password = self.validated_data['new_password']
-
-#         user = models.RestorePasswordToken.update_password(code, new_password,
-#                                                     user_logs.get_user_ip(request),
-#                                                     user_logs.get_cf_country(request),
-#                                                     user_logs.get_user_agent(request))
-#         return user
+            subject='Confirm your registration',
+            body=f'Click: {link}')
 
 
 class InstrumentSerializer(serializers.ModelSerializer):
@@ -175,7 +34,9 @@ class InstrumentSerializer(serializers.ModelSerializer):
     credit_created_at_d = serializers.DateTimeField(required=False)
     credit_expires_at_d = serializers.DateTimeField(required=False)
     # expected values like 15.575 %
-    credit_interest_percentage = serializers.DecimalField(required=False, max_digits=5, decimal_places=3)
+    credit_interest_percentage = serializers.DecimalField(required=False,
+                                                          max_digits=5,
+                                                          decimal_places=3)
     created_at_dt = serializers.DateTimeField(read_only=True)
     updated_at_dt = serializers.DateTimeField(read_only=True)
 
@@ -193,31 +54,45 @@ class InstrumentSerializer(serializers.ModelSerializer):
 
 
 class OrderSerializer(serializers.ModelSerializer):
-    type = serializers.ChoiceField(choices=[tag.value for tag in models.OrderType])
-    status = serializers.ChoiceField(choices=[tag.value for tag in models.OrderStatus], read_only=True)
+    type = serializers.ChoiceField(
+        choices=[tag.value for tag in models.OrderType])
+    status = serializers.ChoiceField(
+        choices=[tag.value for tag in models.OrderStatus], read_only=True)
     instrument = InstrumentSerializer(read_only=True)
     instrument_id = serializers.IntegerField(write_only=True)
     user = serializers.ReadOnlyField(source='user.id')
-    remaining_sum = serializers.DecimalField(max_digits=20, decimal_places=8, read_only=True)
-    total_sum = serializers.DecimalField(max_digits=20, decimal_places=8, write_only=True)
-    actual_price = serializers.DecimalField(max_digits=20, decimal_places=8, read_only=True)
+    remaining_sum = serializers.DecimalField(max_digits=20,
+                                             decimal_places=8,
+                                             read_only=True)
+    total_sum = serializers.DecimalField(max_digits=20,
+                                         decimal_places=8,
+                                         write_only=True)
+    actual_price = serializers.DecimalField(max_digits=20,
+                                            decimal_places=8,
+                                            read_only=True)
 
     class Meta:
         model = models.Order
-        fields = ['remaining_sum', 'type', 'status', 'expires_in', 'created_at_dt', 'updated_at_dt', 'total_sum',
-                  'instrument_id', 'instrument', 'user', 'price', 'actual_price']
+        fields = [
+            'remaining_sum', 'type', 'status', 'expires_in', 'created_at_dt',
+            'updated_at_dt', 'total_sum', 'instrument_id', 'instrument',
+            'user', 'price', 'actual_price'
+        ]
 
     def create(self, validated_data):
         user = self.context['request'].user
         if validated_data['type'] == models.OrderType.BUY.value:
-            balance = models.FiatBalance.objects.get(user=user, currency__title='USD')  # TODO HARDCODE USD
-            if balance.amount < validated_data['total_sum'] * validated_data['price']:
+            balance = models.FiatBalance.objects.get(
+                user=user, currency__title='USD')  # TODO HARDCODE USD
+            if balance.amount < validated_data['total_sum'] * validated_data[
+                    'price']:
                 raise serializers.ValidationError('Not enough fiat balance')
         elif validated_data['type'] == models.OrderType.SELL.value:
-            balance = models.InstrumentBalance.objects.get(user=user,
-                                                           instrument=validated_data['instrument_id'])
+            balance = models.InstrumentBalance.objects.get(
+                user=user, instrument=validated_data['instrument_id'])
             if balance.amount < validated_data['total_sum']:
-                raise serializers.ValidationError('Not enough instrument balance')
+                raise serializers.ValidationError(
+                    'Not enough instrument balance')
         order = models.Order(user=user, **validated_data)
         order.remaining_sum = order.total_sum
         return models.Order.place_order(order)
@@ -225,11 +100,16 @@ class OrderSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         instance.type = validated_data.get('type', instance.type)
         instance.status = validated_data.get('status', instance.status)
-        instance.instrument_from = validated_data.get('instrument_from', instance.instrument_from)
-        instance.instrument_to = validated_data.get('instrument_to', instance.instrument_to)
-        instance.total_sum = validated_data.get('total_sum', instance.total_sum)
-        instance.remaining_sum = validated_data.get('remaining_sum', instance.remaining_sum)
-        instance.expires_in = validated_data.get('expires_in', instance.expires_in)
+        instance.instrument_from = validated_data.get('instrument_from',
+                                                      instance.instrument_from)
+        instance.instrument_to = validated_data.get('instrument_to',
+                                                    instance.instrument_to)
+        instance.total_sum = validated_data.get('total_sum',
+                                                instance.total_sum)
+        instance.remaining_sum = validated_data.get('remaining_sum',
+                                                    instance.remaining_sum)
+        instance.expires_in = validated_data.get('expires_in',
+                                                 instance.expires_in)
         return instance
 
 
@@ -266,16 +146,16 @@ class InstrumentBalanceSerializer(serializers.ModelSerializer):
 class OrderPriceHistorySerializer(serializers.ModelSerializer):
     class Meta:
         model = models.OrderPriceHistory
-        fields = ('price',)
+        fields = ('price', )
 
 
 class LiquidityRateSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.LiquidityHistory
-        fields = ('value',)
+        fields = ('value', )
 
 
 class PlacementRateSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.PlacedAssetsHistory
-        fields = ('value',)
+        fields = ('value', )
